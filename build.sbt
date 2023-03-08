@@ -27,7 +27,7 @@ val munitCatsEffectV = "2.0.0-M3"
 
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
-  .aggregate(core)
+  .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -56,6 +56,13 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   ).jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
   )
+
+lazy val codeGenerator = project.in(file("codegen/generator"))
+
+lazy val codeGeneratorPlugin = project.in(file("codegen/plugin"))
+
+lazy val codeGeneratorTesting = project.in(file("codegen/testing"))
+
 
 lazy val site = project.in(file("site"))
   .enablePlugins(TypelevelSitePlugin)
