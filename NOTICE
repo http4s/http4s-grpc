@@ -1,0 +1,8 @@
+http4s-grpc
+Copyright 2023 Christopher Davenport
+Licensed under MIT (see LICENSE)
+
+This software contains portions of code derived from fs2-grpc
+https://github.com/typelevel/fs2-grpc
+Copyright (c) 2018 Gary Coady
+Licensed under MIT (see licenses/fs2Grpc_LICENSE)
