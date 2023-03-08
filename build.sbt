@@ -54,6 +54,9 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
 
       "org.typelevel"               %%% "munit-cats-effect-3"        % munitCatsEffectV         % Test,
 
+      "com.thesamet.scalapb" %%% "scalapb-runtime" % "0.11.13",
+
+
     )
   ).jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
