@@ -9,6 +9,8 @@ ThisBuild / developers := List(
 ThisBuild / tlCiReleaseBranches := Seq("main")
 ThisBuild / tlSonatypeUseLegacyHost := true
 
+ThisBuild / tlMimaPreviousVersions := Set()
+
 val Scala212 = "2.12.17"
 val Scala213 = "2.13.10"
 
