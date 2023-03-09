@@ -118,7 +118,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"def toRoutes[F[_]: $Concurrent](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
+      s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
     ).indent
       .call(serviceBindingImplementations)
       .outdent
@@ -151,6 +151,7 @@ object Http4sGrpcServicePrinter {
     val Ctx = s"$http4sPkg.Headers"
 
     val Concurrent = s"$effPkg.Concurrent"
+    val Temporal = s"$effPkg.Temporal"
     val Client = s"$http4sClientPkg.Client"
     val Uri = s"$http4sPkg.Uri"
     val Stream = s"$fs2Pkg.Stream"
