@@ -109,7 +109,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceClient: PrinterEndo = {
     _.add(
-      s"def mkClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new $serviceNameHttp4s[F] {"
+      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new $serviceNameHttp4s[F] {"
     ).indent
       .call(serviceMethodImplementations)
       .outdent
@@ -118,7 +118,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"def serviceBinding[F[_]: $Concurrent](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
+      s"def toRoutes[F[_]: $Concurrent](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
     ).indent
       .call(serviceBindingImplementations)
       .outdent

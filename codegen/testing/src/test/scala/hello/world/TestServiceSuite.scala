@@ -34,8 +34,8 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
-  val client = TestServiceHttp4s.mkClient[IO](
-    Client.fromHttpApp(TestServiceHttp4s.serviceBinding(impl).orNotFound),
+  val client = TestServiceHttp4s.fromClient[IO](
+    Client.fromHttpApp(TestServiceHttp4s.toRoutes(impl).orNotFound),
     Uri()
   )
 
