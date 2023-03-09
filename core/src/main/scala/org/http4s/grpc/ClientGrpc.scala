@@ -5,6 +5,7 @@ import org.http4s._
 import org.http4s.client.Client
 import scodec.{Encoder, Decoder}
 import fs2._
+import org.http4s.ember.core.h2.H2Keys
 
 object ClientGrpc {
   def unaryToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
@@ -21,6 +22,7 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
+      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp => 
       codecs.Messages.decodeSingle(decode)(resp.body)
@@ -42,6 +44,7 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
+      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     Stream.resource(client.run(req)).flatMap( resp => 
       codecs.Messages.decode[F, B](decode)(resp.body)
@@ -62,6 +65,7 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encode(encode)(message))
+      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp => 
       codecs.Messages.decodeSingle(decode)(resp.body)
@@ -82,6 +86,7 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encode(encode)(message))
+      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     Stream.resource(client.run(req)).flatMap( resp => 
       codecs.Messages.decode[F, B](decode)(resp.body)
