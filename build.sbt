@@ -9,7 +9,7 @@ ThisBuild / developers := List(
 ThisBuild / tlCiReleaseBranches := Seq("main")
 ThisBuild / tlSonatypeUseLegacyHost := true
 
-
+val Scala212 = "2.12.17"
 val Scala213 = "2.13.10"
 
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.2.2")
@@ -55,7 +55,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 
 lazy val codeGenerator = project.in(file("codegen/generator")).settings(
   name := "http4s-grpc-generator",
-  crossScalaVersions := Seq("2.12.17"),
+  crossScalaVersions := Seq(Scala212),
   libraryDependencies ++= Seq(
     "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
   )
@@ -64,7 +64,28 @@ lazy val codeGenerator = project.in(file("codegen/generator")).settings(
 lazy val codegenFullName =
   "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
 
-lazy val codeGeneratorPlugin = project.in(file("codegen/plugin"))
+lazy val codeGeneratorPlugin = project
+  .in(file("codegen/plugin"))
+  .enablePlugins(BuildInfoPlugin, SbtPlugin)
+  .settings(
+    name := "sbt-http4s-grpc",
+    crossScalaVersions := Seq(Scala212),
+    buildInfoPackage := "org.http4s.grpc.sbt",
+    buildInfoOptions += BuildInfoOption.PackagePrivate,
+    buildInfoKeys := Seq[BuildInfoKey](
+      version,
+      organization,
+      scalaBinaryVersion,
+      "codeGeneratorModule" -> (codeGenerator / name).value,
+      "coreModule" -> (core.jvm / name).value,
+      "codeGeneratorClass" -> codegenFullName,
+    ),
+    libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
+    ),
+    addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.6"),
+    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.1")
+  )
 
 lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
