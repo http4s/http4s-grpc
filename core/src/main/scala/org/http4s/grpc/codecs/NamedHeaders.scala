@@ -20,6 +20,7 @@ object NamedHeaders {
     ).map{ case (value, unit) => 
       GrpcTimeout(FiniteDuration.apply(value, unit))
     }
+
     implicit val header = org.http4s.Header.create[GrpcTimeout, Header.Single](
       CIString("grpc-timeout"),
       (t: GrpcTimeout) => {
@@ -31,8 +32,7 @@ object NamedHeaders {
       (s: String) => ParseResult.fromParser(parser, "Invalid GrpcTimeout")(s)
     )
 
-
-    def encodeTimeUnit(t: TimeUnit): (Int, String) = t match {
+    private def encodeTimeUnit(t: TimeUnit): (Int, String) = t match {
       case NANOSECONDS => (1, "n")
       case MICROSECONDS => (1, "u")
       case MILLISECONDS => (1, "m")
@@ -42,7 +42,7 @@ object NamedHeaders {
       case DAYS => (24, "H")
     }
 
-    def decodeTimeUnit(s: String): Option[TimeUnit] =  s match {
+    private def decodeTimeUnit(s: String): Option[TimeUnit] =  s match {
       case "H" => HOURS.some
       case "M" => MINUTES.some
       case "S" => SECONDS.some
