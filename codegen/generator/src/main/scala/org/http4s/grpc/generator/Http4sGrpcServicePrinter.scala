@@ -143,33 +143,21 @@ object Http4sGrpcServicePrinter {
     private val http4sPkg = "_root_.org.http4s"
     private val http4sClientPkg = "_root_.org.http4s.client"
     private val http4sGrpcPkg = s"$http4sPkg.grpc"
-    private val grpcPkg = "_root_.io.grpc"
 
     // /
 
     val Ctx = s"$http4sPkg.Headers"
 
-    val Async = s"$effPkg.Async"
     val Concurrent = s"$effPkg.Concurrent"
     val Client = s"$http4sClientPkg.Client"
     val Uri = s"$http4sPkg.Uri"
-    val Resource = s"$effPkg.Resource"
-    val Dispatcher = s"$effPkg.std.Dispatcher"
     val Stream = s"$fs2Pkg.Stream"
 
-    val Fs2ServerCallHandler = s"$http4sGrpcPkg.server.Fs2ServerCallHandler"
     val ClientGrpc = s"$http4sGrpcPkg.ClientGrpc"
     val ServerGrpc = s"$http4sGrpcPkg.ServerGrpc"
-    val ClientOptions = s"$http4sGrpcPkg.client.ClientOptions"
-    val ServerOptions = s"$http4sGrpcPkg.server.ServerOptions"
-    val Companion = s"$http4sGrpcPkg.GeneratedCompanion"
     val HttpRoutes = s"$http4sPkg.HttpRoutes"
 
     val Codec = s"$http4sGrpcPkg.codecs.ScalaPb"
-
-    val ServerServiceDefinition = s"$grpcPkg.ServerServiceDefinition"
-    val Channel = s"$grpcPkg.Channel"
-    val Metadata = s"$grpcPkg.Metadata"
 
   }
 
