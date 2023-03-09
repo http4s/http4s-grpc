@@ -35,8 +35,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
-    val scalaInType = method.inputType.scalaType
-    val scalaOutType = method.outputType.scalaType
+    val scalaInType = "_root_."+method.inputType.scalaType
+    val scalaOutType = "_root_."+method.outputType.scalaType
     val ctx = s"ctx: $Ctx"
 
     s"def ${method.name}" + (method.streamType match {
@@ -57,8 +57,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
   }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val encode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
-    val decode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val encode = s"$Codec.codecForGenerated(_root_.${method.inputType.scalaType})"
+    val decode = s"$Codec.codecForGenerated(_root_.${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
     val methodName = method.name
     s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
@@ -109,7 +109,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceClient: PrinterEndo = {
     _.add(
-      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new $serviceNameHttp4s[F] {"
+      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new _root_.$servicePkgName.$serviceNameHttp4s[F] {"
     ).indent
       .call(serviceMethodImplementations)
       .outdent
@@ -118,7 +118,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
+      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceNameHttp4s[F]): $HttpRoutes[F] = {"
     ).indent
       .call(serviceBindingImplementations)
       .outdent
