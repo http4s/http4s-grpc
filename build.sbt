@@ -54,6 +54,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
 
 lazy val codeGenerator = project.in(file("codegen/generator")).settings(
+  name := "http4s-grpc-generator",
   crossScalaVersions := Seq("2.12.17"),
   libraryDependencies ++= Seq(
     "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
