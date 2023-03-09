@@ -10,20 +10,17 @@ ThisBuild / tlCiReleaseBranches := Seq("main")
 ThisBuild / tlSonatypeUseLegacyHost := true
 
 
-val Scala213 = "2.13.7"
+val Scala213 = "2.13.10"
 
-ThisBuild / crossScalaVersions := Seq("2.12.15", Scala213)
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.2.2")
 ThisBuild / scalaVersion := Scala213
-
-ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 val catsV = "2.9.0"
 val catsEffectV = "3.4.8"
 val fs2V = "3.6.1"
 val http4sV = "0.23.18"
-val circeV = "0.14.5"
 val munitCatsEffectV = "2.0.0-M3"
-
+import scalapb.compiler.Version.scalapbVersion
 
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
@@ -44,24 +41,48 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "co.fs2"                      %%% "fs2-scodec"                 % fs2V,
 
       "org.http4s"                  %%% "http4s-dsl"                 % http4sV,
-      "org.http4s"                  %%% "http4s-ember-server"        % http4sV,
-      "org.http4s"                  %%% "http4s-ember-client"        % http4sV,
+      "org.http4s"                  %%% "http4s-server"              % http4sV,
+      "org.http4s"                  %%% "http4s-client"              % http4sV,
 
       "org.typelevel"               %%% "munit-cats-effect"        % munitCatsEffectV         % Test,
 
-      "com.thesamet.scalapb" %%% "scalapb-runtime" % "0.11.13",
-
+      "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion,
 
     )
   ).jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
   )
 
-lazy val codeGenerator = project.in(file("codegen/generator"))
+lazy val codeGenerator = project.in(file("codegen/generator")).settings(
+  libraryDependencies ++= Seq(
+    "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
+  )
+)
+
+lazy val codegenFullName =
+  "org.http4s.grpc.codegen.Http4sGrpcCodeGenerator"
 
 lazy val codeGeneratorPlugin = project.in(file("codegen/plugin"))
 
-lazy val codeGeneratorTesting = project.in(file("codegen/testing"))
+lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
+  .in(file("codegen/testing"))
+  .enablePlugins(LocalCodeGenPlugin, BuildInfoPlugin, NoPublishPlugin)
+  .dependsOn(core)
+  .settings(
+    codeGenClasspath := (codeGenerator / Compile / fullClasspath).value,
+    Compile / PB.targets := Seq(
+      scalapb.gen() -> (Compile / sourceManaged).value / "scalapb",
+      genModule(codegenFullName + "$") -> (Compile / sourceManaged).value / "http4s-grpc"
+    ),
+    Compile / PB.protoSources += baseDirectory.value.getParentFile / "src" / "main" / "protobuf",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
+    ),
+    buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
+    buildInfoKeys := Seq[BuildInfoKey]("sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"),
+    githubWorkflowArtifactUpload := false
+  )
 
 
 lazy val site = project.in(file("site"))
