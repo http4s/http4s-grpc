@@ -88,11 +88,9 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
     _.call(service.methods.map(serviceMethodImplementation): _*)
 
   private[this] def serviceBindingImplementations: PrinterEndo =
-    _.indent
-      .add(s"$HttpRoutes.empty[F]")
+    _.add(s"$HttpRoutes.empty[F]")
       .indent
       .call(service.methods.map(serviceBindingImplementation): _*)
-      .outdent
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
