@@ -25,12 +25,11 @@ import com.google.protobuf.Descriptors.{MethodDescriptor, ServiceDescriptor}
 import scalapb.compiler.FunctionalPrinter.PrinterEndo
 import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, StreamType}
 
-class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String, di: DescriptorImplicits) {
+class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplicits) {
   import di._
   import Http4sGrpcServicePrinter.constants._
 
   private[this] val serviceName: String = service.name
-  private[this] val serviceNameHttp4s: String = s"$serviceName$serviceSuffix"
   private[this] val servicePkgName: String = service.getFile.scalaPackage.fullName
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
@@ -96,10 +95,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
-    _.add(s"trait $serviceNameHttp4s[F[_]] {").indent.call(serviceMethods).outdent.add("}")
+    _.add(s"trait $serviceName[F[_]] {").indent.call(serviceMethods).outdent.add("}")
 
   private[this] def serviceObject: PrinterEndo =
-    _.add(s"object $serviceNameHttp4s {").indent.newline
+    _.add(s"object $serviceName {").indent.newline
       .call(serviceClient)
       .newline
       .call(serviceBinding)
@@ -109,7 +108,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceClient: PrinterEndo = {
     _.add(
-      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new _root_.$servicePkgName.$serviceNameHttp4s[F] {"
+      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceName[F] = new _root_.$servicePkgName.$serviceName[F] {"
     ).indent
       .call(serviceMethodImplementations)
       .outdent
@@ -118,7 +117,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceNameHttp4s[F]): $HttpRoutes[F] = {"
+      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F]): $HttpRoutes[F] = {"
     ).indent
       .call(serviceBindingImplementations)
       .outdent

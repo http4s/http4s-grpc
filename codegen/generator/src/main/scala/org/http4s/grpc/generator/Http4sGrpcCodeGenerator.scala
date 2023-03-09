@@ -29,44 +29,36 @@ import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, GeneratorParams
 import scalapb.options.Scalapb
 import scala.jdk.CollectionConverters._
 
-final case class Http4sGrpcParams(serviceSuffix: String = "Http4s")
-
 object Http4sGrpcCodeGenerator extends CodeGenApp {
 
   def generateServiceFiles(
       file: FileDescriptor,
-      Http4sGrpcparams: Http4sGrpcParams,
       di: DescriptorImplicits
   ): Seq[PluginProtos.CodeGeneratorResponse.File] = {
     file.getServices.asScala.map { service =>
-      val p = new Http4sGrpcServicePrinter(service, Http4sGrpcparams.serviceSuffix, di)
+      val p = new Http4sGrpcServicePrinter(service, di)
 
       import di.{ExtendedServiceDescriptor, ExtendedFileDescriptor}
       val code = p.printService(FunctionalPrinter()).result()
       val b = PluginProtos.CodeGeneratorResponse.File.newBuilder()
-      b.setName(file.scalaDirectory + "/" + service.name + s"${Http4sGrpcparams.serviceSuffix}.scala")
+      b.setName(file.scalaDirectory + "/" + service.name + ".scala")
       b.setContent(code)
       b.build
     }.toSeq
   }
 
-  private def parseParameters(params: String): Either[String, (GeneratorParams, Http4sGrpcParams)] =
+  private def parseParameters(params: String): Either[String, (GeneratorParams)] =
     for {
       paramsAndUnparsed <- GeneratorParams.fromStringCollectUnrecognized(params)
       params = paramsAndUnparsed._1
       unparsed = paramsAndUnparsed._2
-      suffix <- unparsed.map(_.split("=", 2).toList).foldLeft[Either[String, Http4sGrpcParams]](Right(Http4sGrpcParams())) {
-        case (Right(params), ServiceSuffix :: suffix :: Nil) => Right(params.copy(serviceSuffix = suffix))
-        case (Right(_), xs) => Left(s"Unrecognized parameter: $xs")
-        case (Left(e), _) => Left(e)
-      }
-    } yield (params, suffix)
+    } yield params
 
   def process(request: CodeGenRequest): CodeGenResponse = {
     parseParameters(request.parameter) match {
-      case Right((params, http4sGrpcParams)) =>
+      case Right(params) =>
         val implicits = DescriptorImplicits.fromCodeGenRequest(params, request)
-        val srvFiles = request.filesToGenerate.flatMap(generateServiceFiles(_, http4sGrpcParams, implicits))
+        val srvFiles = request.filesToGenerate.flatMap(generateServiceFiles(_, implicits))
         CodeGenResponse.succeed(
           srvFiles,
           Set(PluginProtos.CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL)
@@ -79,6 +71,4 @@ object Http4sGrpcCodeGenerator extends CodeGenApp {
   override def registerExtensions(registry: ExtensionRegistry): Unit = {
     Scalapb.registerAllExtensions(registry)
   }
-
-  private[generator] val ServiceSuffix: String = "serviceSuffix"
 }
