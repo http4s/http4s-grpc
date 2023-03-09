@@ -73,7 +73,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
   .settings(
     codeGenClasspath := (codeGenerator / Compile / fullClasspath).value,
     Compile / PB.targets := Seq(
-      scalapb.gen() -> (Compile / sourceManaged).value / "scalapb",
+      scalapb.gen(grpc = false) -> (Compile / sourceManaged).value / "scalapb",
       genModule(codegenFullName + "$") -> (Compile / sourceManaged).value / "http4s-grpc"
     ),
     Compile / PB.protoSources += baseDirectory.value.getParentFile / "src" / "main" / "protobuf",
