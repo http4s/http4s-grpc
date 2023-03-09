@@ -30,7 +30,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
   import Http4sGrpcServicePrinter.constants._
 
   private[this] val serviceName: String = service.name
-  private[this] val serviceNameFs2: String = s"$serviceName$serviceSuffix"
+  private[this] val serviceNameHttp4s: String = s"$serviceName$serviceSuffix"
   private[this] val servicePkgName: String = service.getFile.scalaPackage.fullName
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
@@ -49,32 +49,24 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def handleMethod(method: MethodDescriptor) = {
     method.streamType match {
-      case StreamType.Unary => "unaryToUnaryCall"
-      case StreamType.ClientStreaming => "streamingToUnaryCall"
-      case StreamType.ServerStreaming => "unaryToStreamingCall"
-      case StreamType.Bidirectional => "streamingToStreamingCall"
+      case StreamType.Unary => "unaryToUnary"
+      case StreamType.ClientStreaming => "streamToUnary"
+      case StreamType.ServerStreaming => "unaryToStream"
+      case StreamType.Bidirectional => "streamToStream"
     }
   }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val basicClientCall =
-      s"$Fs2ClientCall[F](channel, ${method.grpcDescriptor.fullName}, dispatcher, clientOptions)"
-    if (method.isServerStreaming)
-      s"$Stream.eval($basicClientCall)"
-    else
-      basicClientCall
+    val encode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
+    val decode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val methodName = method.name
+    s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
   }
 
   private[this] def serviceMethodImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    val mkMetadata = if (method.isServerStreaming) s"$Stream.eval(mkMetadata(ctx))" else "mkMetadata(ctx)"
-
     p.add(serviceMethodSignature(method) + " = {")
       .indent
-      .add(s"$mkMetadata.flatMap { m =>")
-      .indent
-      .add(s"${createClientCall(method)}.flatMap(_.${handleMethod(method)}(request, m))")
-      .outdent
-      .add("}")
+      .add(s"${createClientCall(method)}")
       .outdent
       .add("}")
   }
@@ -104,10 +96,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
-    _.add(s"trait $serviceNameFs2[F[_], $Ctx] {").indent.call(serviceMethods).outdent.add("}")
+    _.add(s"trait $serviceNameHttp4s[F[_]] {").indent.call(serviceMethods).outdent.add("}")
 
   private[this] def serviceObject: PrinterEndo =
-    _.add(s"object $serviceNameFs2 extends $Companion[$serviceNameFs2] {").indent.newline
+    _.add(s"object $serviceNameHttp4s {").indent.newline
       .call(serviceClient)
       .newline
       .call(serviceBinding)
@@ -117,7 +109,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceClient: PrinterEndo = {
     _.add(
-      s"def mkClient[F[_]: $Async, $Ctx](dispatcher: $Dispatcher[F], channel: $Channel, mkMetadata: $Ctx => F[$Metadata], clientOptions: $ClientOptions): $serviceNameFs2[F, $Ctx] = new $serviceNameFs2[F, $Ctx] {"
+      s"def mkClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceNameHttp4s[F] = new $serviceNameHttp4s[F] {"
     ).indent
       .call(serviceMethodImplementations)
       .outdent
@@ -126,7 +118,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"protected def serviceBinding[F[_]: $Async, $Ctx](dispatcher: $Dispatcher[F], serviceImpl: $serviceNameFs2[F, $Ctx], mkCtx: $Metadata => F[$Ctx], serverOptions: $ServerOptions): $ServerServiceDefinition = {"
+      s"protected def serviceBinding[F[_]: $Async](serviceImpl: $serviceNameHttp4s[F]): $ServerServiceDefinition = {"
     ).indent
       .add(s"$ServerServiceDefinition")
       .call(serviceBindingImplementations)
@@ -149,25 +141,32 @@ object Http4sGrpcServicePrinter {
 
   private[generator] object constants {
 
-    private val effPkg = "_root_.cats.effect"
+    private val effPkg = "_root_.cats.effect.kernel"
     private val fs2Pkg = "_root_.fs2"
-    private val Http4sGrpcPkg = "_root_.fs2.grpc"
+    private val http4sPkg = "_root_.org.http4s"
+    private val http4sClientPkg = "_root_.org.http4s.client"
+    private val http4sGrpcPkg = s"$http4sPkg.grpc"
     private val grpcPkg = "_root_.io.grpc"
 
     // /
 
-    val Ctx = "A"
+    val Ctx = s"$http4sPkg.Headers"
 
     val Async = s"$effPkg.Async"
+    val Concurrent = s"$effPkg.Concurrent"
+    val Client = s"$http4sClientPkg.Client"
+    val Uri = s"$http4sPkg.Uri"
     val Resource = s"$effPkg.Resource"
     val Dispatcher = s"$effPkg.std.Dispatcher"
     val Stream = s"$fs2Pkg.Stream"
 
-    val Fs2ServerCallHandler = s"$Http4sGrpcPkg.server.Fs2ServerCallHandler"
-    val Fs2ClientCall = s"$Http4sGrpcPkg.client.Fs2ClientCall"
-    val ClientOptions = s"$Http4sGrpcPkg.client.ClientOptions"
-    val ServerOptions = s"$Http4sGrpcPkg.server.ServerOptions"
-    val Companion = s"$Http4sGrpcPkg.GeneratedCompanion"
+    val Fs2ServerCallHandler = s"$http4sGrpcPkg.server.Fs2ServerCallHandler"
+    val ClientGrpc = s"$http4sGrpcPkg.ClientGrpc"
+    val ClientOptions = s"$http4sGrpcPkg.client.ClientOptions"
+    val ServerOptions = s"$http4sGrpcPkg.server.ServerOptions"
+    val Companion = s"$http4sGrpcPkg.GeneratedCompanion"
+
+    val Codec = s"$http4sGrpcPkg.codecs.ScalaPb"
 
     val ServerServiceDefinition = s"$grpcPkg.ServerServiceDefinition"
     val Channel = s"$grpcPkg.Channel"
