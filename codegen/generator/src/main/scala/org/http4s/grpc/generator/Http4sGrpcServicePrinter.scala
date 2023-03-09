@@ -59,6 +59,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
   private[this] def createClientCall(method: MethodDescriptor) = {
     val encode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
     val decode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val serviceName = method.getService.getFullName
     val methodName = method.name
     s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
   }
@@ -77,6 +78,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
     val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
     val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val serviceName = method.getService.getFullName
     val methodName = method.name
 
     p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.$methodName(_, _)))""")
