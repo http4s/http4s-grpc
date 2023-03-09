@@ -21,7 +21,7 @@ object NamedHeaders {
       GrpcTimeout(FiniteDuration.apply(value, unit))
     }
 
-    implicit val header = org.http4s.Header.create[GrpcTimeout, Header.Single](
+    implicit val header: Header[GrpcTimeout, Header.Single] = Header.create(
       CIString("grpc-timeout"),
       (t: GrpcTimeout) => {
         val (x, unit) = encodeTimeUnit(t.duration.unit)
