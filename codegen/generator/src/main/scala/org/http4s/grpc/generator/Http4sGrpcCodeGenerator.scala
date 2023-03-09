@@ -29,7 +29,7 @@ import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, GeneratorParams
 import scalapb.options.Scalapb
 import scala.jdk.CollectionConverters._
 
-final case class Http4sGrpcParams(serviceSuffix: String = "Http4sGrpc")
+final case class Http4sGrpcParams(serviceSuffix: String = "Http4s")
 
 object Http4sGrpcCodeGenerator extends CodeGenApp {
 

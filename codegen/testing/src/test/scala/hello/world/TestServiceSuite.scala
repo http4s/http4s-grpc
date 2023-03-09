@@ -12,7 +12,7 @@ import org.scalacheck.effect.PropF.forAllF
 
 class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   
-  val impl = new TestServiceHttp4sGrpc[IO] {
+  val impl = new TestServiceHttp4s[IO] {
     def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
       IO(request)
 
@@ -34,8 +34,8 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
-  val client = TestServiceHttp4sGrpc.mkClient[IO](
-    Client.fromHttpApp(TestServiceHttp4sGrpc.serviceBinding(impl).orNotFound),
+  val client = TestServiceHttp4s.mkClient[IO](
+    Client.fromHttpApp(TestServiceHttp4s.serviceBinding(impl).orNotFound),
     Uri()
   )
 
