@@ -54,13 +54,14 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
 
 lazy val codeGenerator = project.in(file("codegen/generator")).settings(
+  crossScalaVersions := Seq("2.12.17"),
   libraryDependencies ++= Seq(
     "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
   )
 )
 
 lazy val codegenFullName =
-  "org.http4s.grpc.codegen.Http4sGrpcCodeGenerator"
+  "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
 
 lazy val codeGeneratorPlugin = project.in(file("codegen/plugin"))
 
@@ -77,6 +78,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     ),
     Compile / PB.protoSources += baseDirectory.value.getParentFile / "src" / "main" / "protobuf",
     libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion % "protobuf",
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
     ),
     buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
