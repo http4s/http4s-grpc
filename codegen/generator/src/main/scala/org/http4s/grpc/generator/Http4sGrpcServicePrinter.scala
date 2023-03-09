@@ -72,15 +72,14 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
   }
 
   private[this] def serviceBindingImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    val inType = method.inputType.scalaType
-    val outType = method.outputType.scalaType
-    val descriptor = method.grpcDescriptor.fullName
-    val handler = s"$Fs2ServerCallHandler[F](dispatcher, serverOptions).${handleMethod(method)}[$inType, $outType]"
-
     val serviceCall = s"serviceImpl.${method.name}"
     val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
 
-    p.add(s".addMethod($descriptor, $handler((r, m) => $eval.flatMap($serviceCall(r, _))))")
+    val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
+    val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val methodName = method.name
+
+    p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.$methodName(_, _)))""")
   }
 
   private[this] def serviceMethods: PrinterEndo = _.seq(service.methods.map(serviceMethodSignature))
@@ -90,9 +89,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBindingImplementations: PrinterEndo =
     _.indent
-      .add(s".builder(${service.grpcDescriptor.fullName})")
+      .add(s"$HttpRoutes.empty[F]")
+      .indent
       .call(service.methods.map(serviceBindingImplementation): _*)
-      .add(".build()")
+      .outdent
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
@@ -118,9 +118,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, serviceSuffix: String
 
   private[this] def serviceBinding: PrinterEndo = {
     _.add(
-      s"protected def serviceBinding[F[_]: $Async](serviceImpl: $serviceNameHttp4s[F]): $ServerServiceDefinition = {"
+      s"def serviceBinding[F[_]: $Concurrent](serviceImpl: $serviceNameHttp4s[F]): $HttpRoutes[F] = {"
     ).indent
-      .add(s"$ServerServiceDefinition")
       .call(serviceBindingImplementations)
       .outdent
       .add("}")
@@ -162,9 +161,11 @@ object Http4sGrpcServicePrinter {
 
     val Fs2ServerCallHandler = s"$http4sGrpcPkg.server.Fs2ServerCallHandler"
     val ClientGrpc = s"$http4sGrpcPkg.ClientGrpc"
+    val ServerGrpc = s"$http4sGrpcPkg.ServerGrpc"
     val ClientOptions = s"$http4sGrpcPkg.client.ClientOptions"
     val ServerOptions = s"$http4sGrpcPkg.server.ServerOptions"
     val Companion = s"$http4sGrpcPkg.GeneratedCompanion"
+    val HttpRoutes = s"$http4sPkg.HttpRoutes"
 
     val Codec = s"$http4sGrpcPkg.codecs.ScalaPb"
 
