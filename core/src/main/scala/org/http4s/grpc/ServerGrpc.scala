@@ -27,19 +27,22 @@ object ServerGrpc {
             "grpc-status" -> i.toString()
           )
         )
-        decoded <- codecs.Messages.decodeSingle(decode)(req.body)
-        out <- f(decoded, req.headers)
-          .onError{ case _ => status.set(2)}
+      } yield {
+        val body = Stream.eval(codecs.Messages.decodeSingle(decode)(req.body))
+          .evalMap(f(_, req.headers))
+          .flatMap(codecs.Messages.encodeSingle(encode)(_))
+          .onError{ case _ => Stream.eval(status.set(2))}
 
-      } yield Response[F](Status.Ok, HttpVersion.`HTTP/2`)
-        .putHeaders(
-          Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
-          SharedGrpc.ContentType,
-          SharedGrpc.GrpcEncoding,
-          SharedGrpc.TE
-        )
-        .withBodyStream(codecs.Messages.encodeSingle(encode)(out))
-        .withTrailerHeaders(trailers)
+        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+          .putHeaders(
+            Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
+            SharedGrpc.ContentType,
+            SharedGrpc.GrpcEncoding,
+            SharedGrpc.TE
+          )
+          .withBodyStream(body)
+          .withTrailerHeaders(trailers)
+      }
   }
 
   def unaryToStream[F[_]: Concurrent, A, B](// Stuff We can provide via codegen\
@@ -58,19 +61,21 @@ object ServerGrpc {
             "grpc-status" -> i.toString()
           )
         )
-        decoded <- codecs.Messages.decodeSingle(decode)(req.body)
-        body = f(decoded, req.headers)
+      } yield {
+        val body = Stream.eval(codecs.Messages.decodeSingle(decode)(req.body))
+          .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .onError{ case _ => Stream.eval(status.set(2))}
-      } yield Response[F](Status.Ok, HttpVersion.`HTTP/2`)
-        .putHeaders(
-          Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
-          SharedGrpc.ContentType,
-          SharedGrpc.GrpcEncoding,
-          SharedGrpc.TE
-        )
-        .withBodyStream(body)
-        .withTrailerHeaders(trailers)
+        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+          .putHeaders(
+            Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
+            SharedGrpc.ContentType,
+            SharedGrpc.GrpcEncoding,
+            SharedGrpc.TE
+          )
+          .withBodyStream(body)
+          .withTrailerHeaders(trailers)
+      }
   }
 
   def streamToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen\
@@ -89,18 +94,22 @@ object ServerGrpc {
             "grpc-status" -> i.toString()
           )
         )
-        out <- f(codecs.Messages.decode(decode)(req.body), req.headers)
-          .onError{ case _ => status.set(2)}
 
-      } yield Response[F](Status.Ok, HttpVersion.`HTTP/2`)
-        .putHeaders(
-          Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
-          SharedGrpc.ContentType,
-          SharedGrpc.GrpcEncoding,
-          SharedGrpc.TE
-        )
-        .withBodyStream(codecs.Messages.encodeSingle(encode)(out))
-        .withTrailerHeaders(trailers)
+      } yield {
+        val body = Stream.eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
+          .flatMap(codecs.Messages.encodeSingle(encode)(_))
+          .onError{ case _ => Stream.eval(status.set(2))}
+
+        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+          .putHeaders(
+            Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
+            SharedGrpc.ContentType,
+            SharedGrpc.GrpcEncoding,
+            SharedGrpc.TE
+          )
+          .withBodyStream(body)
+          .withTrailerHeaders(trailers)
+      }
   }
 
   def streamToStream[F[_]: Concurrent, A, B](// Stuff We can provide via codegen\
@@ -119,19 +128,22 @@ object ServerGrpc {
             "grpc-status" -> i.toString()
           )
         )
-        body = f(codecs.Messages.decode(decode)(req.body), req.headers)
+      } yield {
+
+        val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .onError{ case _ => Stream.eval(status.set(2))}
 
-      } yield Response[F](Status.Ok, HttpVersion.`HTTP/2`)
-        .putHeaders(
-          Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
-          SharedGrpc.ContentType,
-          SharedGrpc.GrpcEncoding,
-          SharedGrpc.TE
-        )
-        .withBodyStream(body)
-        .withTrailerHeaders(trailers)
+        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+          .putHeaders(
+            Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
+            SharedGrpc.ContentType,
+            SharedGrpc.GrpcEncoding,
+            SharedGrpc.TE
+          )
+          .withBodyStream(body)
+          .withTrailerHeaders(trailers)
+      }
   }
 
 }
