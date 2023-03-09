@@ -81,6 +81,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion % "protobuf",
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
+      "org.typelevel" %%% "scalacheck-effect-munit" % "2.0.0-M2" % Test
     ),
     buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
     buildInfoKeys := Seq[BuildInfoKey]("sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"),
