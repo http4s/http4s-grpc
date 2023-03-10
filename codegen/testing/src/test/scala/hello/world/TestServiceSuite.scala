@@ -24,6 +24,8 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
     def bothStreaming(request: Stream[IO, TestMessage], ctx: Headers): Stream[IO, TestMessage] =
       request
+
+    def `export`(request: TestMessage, ctx: Headers): IO[TestMessage] = IO(request)
   }
 
   implicit val arbitraryTestMessage: Arbitrary[TestMessage] = Arbitrary(

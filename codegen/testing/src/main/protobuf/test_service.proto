@@ -9,4 +9,5 @@ service TestService {
   rpc clientStreaming (stream TestMessage) returns (TestMessage);
   rpc serverStreaming (TestMessage) returns (stream TestMessage);
   rpc bothStreaming (stream TestMessage) returns (stream TestMessage);
+  rpc Export (TestMessage) returns (TestMessage);
 }
