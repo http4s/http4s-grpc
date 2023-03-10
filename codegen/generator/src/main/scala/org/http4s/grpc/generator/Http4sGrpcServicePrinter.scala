@@ -59,7 +59,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     val encode = s"$Codec.codecForGenerated(_root_.${method.inputType.scalaType})"
     val decode = s"$Codec.codecForGenerated(_root_.${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
-    val methodName = method.name
+    val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
   }
 
@@ -78,9 +78,9 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
     val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
-    val methodName = method.name
+    val methodName = method.getName
 
-    p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.$methodName(_, _)))""")
+    p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.${method.name}(_, _)))""")
   }
 
   private[this] def serviceMethods: PrinterEndo = _.seq(service.methods.map(serviceMethodSignature))
