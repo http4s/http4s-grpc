@@ -24,12 +24,12 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F]{
     case req@POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, Int](0)
-        trailers = status.get.map(i =>
+        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        trailers = status.get.map{case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i),
-          )
-        )
+          ).put(message.map(NamedHeaders.GrpcMessage(_)))
+        }
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream.eval(codecs.Messages.decodeSingle(decode)(req.body))
@@ -37,11 +37,12 @@ object ServerGrpc {
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set(4)
-            case Resource.ExitCase.Errored(_) => status.set(2)
-            case Resource.ExitCase.Canceled => status.set(1)
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
+          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -65,12 +66,12 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F]{
     case req@POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, Int](0)
-        trailers = status.get.map(i =>
+        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        trailers = status.get.map{case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i),
-          )
-        )
+          ).put(message.map(NamedHeaders.GrpcMessage(_)))
+        }
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream.eval(codecs.Messages.decodeSingle(decode)(req.body))
@@ -78,11 +79,12 @@ object ServerGrpc {
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set(4)
-            case Resource.ExitCase.Errored(_) => status.set(2)
-            case Resource.ExitCase.Canceled => status.set(1)
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
+          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
@@ -105,12 +107,12 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F]{
     case req@POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, Int](0)
-        trailers = status.get.map(i =>
+        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        trailers = status.get.map{case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i),
-          )
-        )
+          ).put(message.map(NamedHeaders.GrpcMessage(_)))
+        }
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
 
       } yield {
@@ -118,11 +120,12 @@ object ServerGrpc {
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set(4)
-            case Resource.ExitCase.Errored(_) => status.set(2)
-            case Resource.ExitCase.Canceled => status.set(1)
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
+          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -146,12 +149,12 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F]{
     case req@POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, Int](0)
-        trailers = status.get.map(i =>
+        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        trailers = status.get.map{case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i),
-          )
-        )
+          ).put(message.map(NamedHeaders.GrpcMessage(_)))
+        }
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
 
@@ -159,11 +162,12 @@ object ServerGrpc {
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set(4)
-            case Resource.ExitCase.Errored(_) => status.set(2)
-            case Resource.ExitCase.Canceled => status.set(1)
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
+          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
