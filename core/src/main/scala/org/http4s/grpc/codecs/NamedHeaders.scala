@@ -53,6 +53,7 @@ object NamedHeaders {
     }
   }
 
+  // https://grpc.github.io/grpc/core/md_doc_statuscodes.html
   case class GrpcStatus(statusCode: Int)
   object GrpcStatus {
     private val parser = cats.parse.Numbers.nonNegativeIntString.map(s => GrpcStatus(s.toInt))
