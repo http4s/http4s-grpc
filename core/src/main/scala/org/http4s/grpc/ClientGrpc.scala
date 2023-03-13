@@ -75,7 +75,7 @@ object ClientGrpc {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
-      .withBodyStream(codecs.Messages.encode(encode)(message))
+      .withBodyStream(codecs.Messages.encode(encode)(message).mask)
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp =>
@@ -100,7 +100,7 @@ object ClientGrpc {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
-      .withBodyStream(codecs.Messages.encode(encode)(message))
+      .withBodyStream(codecs.Messages.encode(encode)(message).mask)
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
 
