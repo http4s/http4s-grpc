@@ -1,5 +1,6 @@
 package hello.world
 
+import cats.syntax.all._
 import cats.effect.IO
 import fs2.Stream
 import munit._
@@ -62,6 +63,37 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   test("both streaming") {
     forAllF { (msgs: List[TestMessage]) =>
       client.bothStreaming(Stream.emits(msgs), Headers.empty).compile.to(List).assertEquals(msgs)
+    }
+  }
+
+  test("Routes returns missing method") {
+    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
+    client.run(org.http4s.Request[IO](org.http4s.Method.POST, uri"/hello.world.TestService/missingMethod"))
+      .use{ resp =>
+        val headers = resp.headers
+        val status = headers.get[org.http4s.grpc.codecs.NamedHeaders.GrpcStatus]
+        status.pure[IO]
+      }.assertEquals(
+        Some(org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(12))
+      )
+  }
+
+  test("Client fails with initial failure"){
+    forAllF { (msg: TestMessage) =>
+      val route = org.http4s.HttpRoutes.of[IO]{
+        case _ => org.http4s.Response(org.http4s.Status.Ok)
+          .putHeaders(
+            org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(12)
+          ).pure[IO]
+      }
+      val client = TestService.fromClient[IO](
+        Client.fromHttpApp(route.orNotFound),
+        Uri()
+      )
+      client.export(msg, Headers.empty)
+        .attemptNarrow[org.http4s.grpc.GrpcExceptions.GrpcFailed]
+        .map(_.leftMap(grpcFailed => grpcFailed.status))
+        .assertEquals(Either.left(12))
     }
   }
 
