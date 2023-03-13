@@ -91,10 +91,41 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
         Uri()
       )
       client.`export`(msg, Headers.empty)
-        .attemptNarrow[org.http4s.grpc.GrpcExceptions.GrpcFailed]
+        .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
         .map(_.leftMap(grpcFailed => grpcFailed.status))
         .assertEquals(Either.left(12))
     }
+  }
+
+  test("Server Fails in Trailers"){
+
+    forAllF { (msg: TestMessage) =>
+      val ts = new TestService[IO] {
+        def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
+          IO(request) <* IO.raiseError(new RuntimeException("Boo!"))
+
+        def clientStreaming(request: Stream[IO, TestMessage], ctx: Headers): IO[TestMessage] =
+          request.compile.lastOrError
+
+        def serverStreaming(request: TestMessage, ctx: Headers): Stream[IO, TestMessage] =
+          Stream.emit(request)
+
+        def bothStreaming(request: Stream[IO, TestMessage], ctx: Headers): Stream[IO, TestMessage] =
+          request
+
+        def `export`(request: TestMessage, ctx: Headers): IO[TestMessage] = IO(request)
+      }
+      val client = TestService.fromClient[IO](
+        Client.fromHttpApp(TestService.toRoutes[IO](ts).orNotFound),
+        Uri()
+      )
+
+      client.noStreaming(msg, Headers.empty)
+        .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
+        .map(_.leftMap(grpcFailed => grpcFailed.status))
+        .assertEquals(Either.left(2))
+    }
+
   }
 
 }

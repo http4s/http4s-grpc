@@ -29,7 +29,9 @@ object ClientGrpc {
 
     client.run(req).use( resp => 
       handleFailure(resp.headers) >>
-      codecs.Messages.decodeSingle(decode)(resp.body) <*
+      codecs.Messages.decodeSingle(decode)(resp.body).handleErrorWith(
+        e => resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B])
+      ) <*
       resp.trailerHeaders.flatMap(handleFailure[F])
     )
   }
@@ -53,7 +55,9 @@ object ClientGrpc {
 
     Stream.resource(client.run(req)).flatMap( resp =>
       Stream.eval(handleFailure(resp.headers)).drain ++
-      codecs.Messages.decode[F, B](decode)(resp.body) ++
+      codecs.Messages.decode[F, B](decode)(resp.body).handleErrorWith(
+        e => Stream.eval(resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B]))
+      ) ++
       Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
     )
   }
@@ -76,7 +80,9 @@ object ClientGrpc {
 
     client.run(req).use( resp =>
       handleFailure(resp.headers) >>
-      codecs.Messages.decodeSingle(decode)(resp.body) <*
+      codecs.Messages.decodeSingle(decode)(resp.body).handleErrorWith(
+        e => resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B])
+      ) <*
       resp.trailerHeaders.flatMap(handleFailure[F])
     )
   }
@@ -99,8 +105,11 @@ object ClientGrpc {
 
 
     Stream.resource(client.run(req)).flatMap( resp =>
+
       Stream.eval(handleFailure(resp.headers)).drain ++
-      codecs.Messages.decode[F, B](decode)(resp.body) ++
+      codecs.Messages.decode[F, B](decode)(resp.body).handleErrorWith(
+        e => Stream.eval(resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B]))
+      ) ++
       Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
     )
   }
@@ -112,7 +121,7 @@ object ClientGrpc {
     status match {
       case Some(NamedHeaders.GrpcStatus(0)) => ().pure[F]
       case Some(NamedHeaders.GrpcStatus(status)) =>
-        GrpcExceptions.GrpcFailed(status, reason.map(_.message)).raiseError[F, Unit]
+        GrpcExceptions.StatusRuntimeException(status, reason.map(_.message)).raiseError[F, Unit]
       case None => ().pure[F]
     }
   }
