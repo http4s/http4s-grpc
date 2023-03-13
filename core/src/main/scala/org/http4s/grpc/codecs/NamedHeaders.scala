@@ -28,7 +28,7 @@ object NamedHeaders {
         val value = t.duration.length
         val out = value * x
         s"$out $unit"
-      }, 
+      },
       (s: String) => ParseResult.fromParser(parser, "Invalid GrpcTimeout")(s)
     )
 
@@ -51,6 +51,31 @@ object NamedHeaders {
       case "n" => NANOSECONDS.some
       case _ => None
     }
+  }
+
+  case class GrpcStatus(statusCode: Int)
+  object GrpcStatus {
+    private val parser = cats.parse.Numbers.nonNegativeIntString.map(s => GrpcStatus(s.toInt))
+
+    implicit val header: Header[GrpcStatus, Header.Single] = Header.create(
+      CIString("grpc-status"),
+      (t: GrpcStatus) => {
+        t.statusCode.toString()
+      },
+      (s: String) => ParseResult.fromParser(parser, "Invalid GrpcStatus")(s)
+    )
+  }
+
+  case class GrpcMessage(message: String)
+  object GrpcMessage {
+
+    implicit val header: Header[GrpcMessage, Header.Single] = Header.create(
+      CIString("grpc-message"),
+      (t: GrpcMessage) => {
+        t.message
+      },
+      (s: String) => ParseResult.success(GrpcMessage(s))
+    )
   }
 
 }

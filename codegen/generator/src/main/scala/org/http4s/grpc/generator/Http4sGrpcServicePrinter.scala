@@ -89,9 +89,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     _.call(service.methods.map(serviceMethodImplementation): _*)
 
   private[this] def serviceBindingImplementations: PrinterEndo =
-    _.add(s"$HttpRoutes.empty[F]")
+    _.add(s"$HttpRoutes.empty")
       .indent
       .call(service.methods.map(serviceBindingImplementation): _*)
+      .add(s""".combineK($ServerGrpc.methodNotFoundRoute("${service.getFullName()}"))""")
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
