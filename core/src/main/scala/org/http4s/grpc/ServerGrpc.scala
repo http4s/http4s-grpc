@@ -38,11 +38,11 @@ object ServerGrpc {
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
             case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
             case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
-          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
+          .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -80,11 +80,11 @@ object ServerGrpc {
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
             case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
             case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
-          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
+          .mask // ensures body closure without rst-stream
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
@@ -121,11 +121,11 @@ object ServerGrpc {
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
             case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
             case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
-          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
+          .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -163,11 +163,11 @@ object ServerGrpc {
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCase{
             case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.getMessage().some))
+            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
             case Resource.ExitCase.Canceled => status.set((1, None))
             case _ => ().pure[F]
           }
-          .handleErrorWith(_ => Stream.empty) // ensures body closure without rst-stream
+          .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
