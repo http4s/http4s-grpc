@@ -1,11 +1,14 @@
 package org.http4s.grpc
 
+import cats._
 import cats.effect._
+import cats.syntax.all._
 import org.http4s._
 import org.http4s.client.Client
 import scodec.{Encoder, Decoder}
 import fs2._
 import org.http4s.ember.core.h2.H2Keys
+import org.http4s.grpc.codecs.NamedHeaders
 
 object ClientGrpc {
   def unaryToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
@@ -25,7 +28,9 @@ object ClientGrpc {
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp => 
-      codecs.Messages.decodeSingle(decode)(resp.body)
+      handleFailure(resp.headers) >>
+      codecs.Messages.decodeSingle(decode)(resp.body) <*
+      resp.trailerHeaders.flatMap(handleFailure[F])
     )
   }
 
@@ -46,8 +51,10 @@ object ClientGrpc {
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    Stream.resource(client.run(req)).flatMap( resp => 
-      codecs.Messages.decode[F, B](decode)(resp.body)
+    Stream.resource(client.run(req)).flatMap( resp =>
+      Stream.eval(handleFailure(resp.headers)).drain ++
+      codecs.Messages.decode[F, B](decode)(resp.body) ++
+      Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
     )
   }
 
@@ -67,8 +74,10 @@ object ClientGrpc {
       .withBodyStream(codecs.Messages.encode(encode)(message))
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    client.run(req).use( resp => 
-      codecs.Messages.decodeSingle(decode)(resp.body)
+    client.run(req).use( resp =>
+      handleFailure(resp.headers) >>
+      codecs.Messages.decodeSingle(decode)(resp.body) <*
+      resp.trailerHeaders.flatMap(handleFailure[F])
     )
   }
 
@@ -88,9 +97,24 @@ object ClientGrpc {
       .withBodyStream(codecs.Messages.encode(encode)(message))
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    Stream.resource(client.run(req)).flatMap( resp => 
-      codecs.Messages.decode[F, B](decode)(resp.body)
+
+    Stream.resource(client.run(req)).flatMap( resp =>
+      Stream.eval(handleFailure(resp.headers)).drain ++
+      codecs.Messages.decode[F, B](decode)(resp.body) ++
+      Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
     )
+  }
+
+  private def handleFailure[F[_]: MonadThrow](headers: Headers): F[Unit] = {
+    val status = headers.get[NamedHeaders.GrpcStatus]
+    val reason = headers.get[NamedHeaders.GrpcMessage]
+
+    status match {
+      case Some(NamedHeaders.GrpcStatus(0)) => ().pure[F]
+      case Some(NamedHeaders.GrpcStatus(status)) =>
+        GrpcExceptions.GrpcFailed(status, reason.map(_.message)).raiseError[F, Unit]
+      case None => ().pure[F]
+    }
   }
 
 
