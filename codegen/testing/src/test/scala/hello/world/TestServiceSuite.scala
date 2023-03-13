@@ -90,7 +90,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
         Client.fromHttpApp(route.orNotFound),
         Uri()
       )
-      client.export(msg, Headers.empty)
+      client.`export`(msg, Headers.empty)
         .attemptNarrow[org.http4s.grpc.GrpcExceptions.GrpcFailed]
         .map(_.leftMap(grpcFailed => grpcFailed.status))
         .assertEquals(Either.left(12))
