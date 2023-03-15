@@ -103,8 +103,19 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .add(s""".combineK($ServerGrpc.methodNotFoundRoute("${service.getFullName()}"))""")
       .outdent
 
+  private[this] def generateScalaDoc(method: ServiceDescriptor): PrinterEndo = { fp =>
+    val lines = asScalaDocBlock(method.comment.map(_.split('\n').toSeq).getOrElse(Seq.empty))
+    fp.add(lines: _*)
+  }
+
   private[this] def serviceTrait: PrinterEndo =
-    _.add(s"trait $serviceName[F[_]] {").newline.indent.call(serviceMethods).outdent.add("}")
+    _.call(generateScalaDoc(service))
+      .add(s"trait $serviceName[F[_]] {")
+      .newline
+      .indent
+      .call(serviceMethods)
+      .outdent
+      .add("}")
 
   private[this] def serviceObject: PrinterEndo =
     _.add(s"object $serviceName {").indent.newline

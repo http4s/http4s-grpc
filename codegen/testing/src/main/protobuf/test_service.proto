@@ -4,6 +4,10 @@ import "test.proto";
 
 package hello.world;
 
+//
+// This is a service comment
+// It also has two lines
+//
 service TestService {
   // uno!
   // another line
