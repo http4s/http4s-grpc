@@ -20,7 +20,7 @@ ThisBuild / scalaVersion := Scala213
 val catsV = "2.9.0"
 val catsEffectV = "3.4.8"
 val fs2V = "3.6.1"
-val http4sV = "0.23.18"
+val http4sV = "0.23.19-RC3"
 val munitCatsEffectV = "2.0.0-M3"
 import scalapb.compiler.Version.scalapbVersion
 
