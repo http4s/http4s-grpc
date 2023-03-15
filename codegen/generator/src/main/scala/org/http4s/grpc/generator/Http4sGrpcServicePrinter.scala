@@ -24,6 +24,7 @@ package org.http4s.grpc.generator
 import com.google.protobuf.Descriptors.{MethodDescriptor, ServiceDescriptor}
 import scalapb.compiler.FunctionalPrinter.PrinterEndo
 import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, StreamType}
+import scalapb.compiler.ProtobufGenerator.asScalaDocBlock
 
 class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplicits) {
   import di._
@@ -178,15 +179,6 @@ object Http4sGrpcServicePrinter {
   private def encodeComment(comment: Option[String]): Seq[String] = {
     val initial = comment.map(_.split('\n').toSeq).getOrElse(Seq.empty)
     asScalaDocBlock(initial)
-  }
-
-  private def asScalaDocBlock(contentLines: Seq[String]): Seq[String] = {
-    if (contentLines.nonEmpty) {
-      contentLines.zipWithIndex.map { case (line, index) =>
-        val prefix = if (index == 0) "/**" else "  *"
-        if (line.startsWith(" ") || line.isEmpty) (prefix + line) else (prefix + " " + line)
-      } :+ "  */"
-    } else contentLines
   }
 
 }
