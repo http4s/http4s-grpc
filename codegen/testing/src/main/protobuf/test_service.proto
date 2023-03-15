@@ -4,7 +4,11 @@ import "test.proto";
 
 package hello.world;
 
-service TestService {  
+//
+// This is a service comment
+//
+service TestService {
+  // This is a method comment
   rpc noStreaming (TestMessage) returns (TestMessage);
   rpc clientStreaming (stream TestMessage) returns (TestMessage);
   rpc serverStreaming (TestMessage) returns (stream TestMessage);

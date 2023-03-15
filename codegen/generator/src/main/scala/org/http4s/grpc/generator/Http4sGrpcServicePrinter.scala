@@ -64,7 +64,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   }
 
   private[this] def serviceMethodImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    p.add(serviceMethodSignature(method) + " = {")
+    p.add(Http4sGrpcServicePrinter.encodeComment(method.comment):_*)
+      .add(serviceMethodSignature(method) + " = {")
       .indent
       .add(s"${createClientCall(method)}")
       .outdent
@@ -96,7 +97,13 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
-    _.add(s"trait $serviceName[F[_]] {").indent.call(serviceMethods).outdent.add("}")
+    _.add(Http4sGrpcServicePrinter.encodeComment(service.comment):_*)
+      .add(s"trait $serviceName[F[_]] {")
+      .indent
+      .call(serviceMethods)
+      .outdent
+      .add("}")
+
 
   private[this] def serviceObject: PrinterEndo =
     _.add(s"object $serviceName {").indent.newline
@@ -134,6 +141,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .newline
       .call(serviceObject)
   }
+
+
+
+
 }
 
 object Http4sGrpcServicePrinter {
@@ -162,6 +173,20 @@ object Http4sGrpcServicePrinter {
 
     val Codec = s"$http4sGrpcPkg.codecs.ScalaPb"
 
+  }
+
+  private def encodeComment(comment: Option[String]): Seq[String] = {
+    val initial = comment.map(_.split('\n').toSeq).getOrElse(Seq.empty)
+    asScalaDocBlock(initial)
+  }
+
+  private def asScalaDocBlock(contentLines: Seq[String]): Seq[String] = {
+    if (contentLines.nonEmpty) {
+      contentLines.zipWithIndex.map { case (line, index) =>
+        val prefix = if (index == 0) "/**" else "  *"
+        if (line.startsWith(" ") || line.isEmpty) (prefix + line) else (prefix + " " + line)
+      } :+ "  */"
+    } else contentLines
   }
 
 }
