@@ -24,6 +24,7 @@ package org.http4s.grpc.generator
 import com.google.protobuf.Descriptors.{MethodDescriptor, ServiceDescriptor}
 import scalapb.compiler.FunctionalPrinter.PrinterEndo
 import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, StreamType}
+import scalapb.compiler.ProtobufGenerator.asScalaDocBlock
 
 class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplicits) {
   import di._
@@ -31,6 +32,11 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] val serviceName: String = service.name
   private[this] val servicePkgName: String = service.getFile.scalaPackage.fullName
+
+  private[this] def generateScalaDoc(method: MethodDescriptor): PrinterEndo = { fp =>
+    val lines = asScalaDocBlock(method.comment.map(_.split('\n').toSeq).getOrElse(Seq.empty))
+    fp.add(lines: _*)
+  }
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
@@ -83,7 +89,9 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.${method.name}(_, _)))""")
   }
 
-  private[this] def serviceMethods: PrinterEndo = _.seq(service.methods.map(serviceMethodSignature))
+  private[this] def serviceMethods: PrinterEndo = _.call(service.methods.map { method =>
+    generateScalaDoc(method).andThen(_.add(serviceMethodSignature(method)).newline)
+  }: _*)
 
   private[this] def serviceMethodImplementations: PrinterEndo =
     _.call(service.methods.map(serviceMethodImplementation): _*)
@@ -96,7 +104,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .outdent
 
   private[this] def serviceTrait: PrinterEndo =
-    _.add(s"trait $serviceName[F[_]] {").indent.call(serviceMethods).outdent.add("}")
+    _.add(s"trait $serviceName[F[_]] {").newline.indent.call(serviceMethods).outdent.add("}")
 
   private[this] def serviceObject: PrinterEndo =
     _.add(s"object $serviceName {").indent.newline

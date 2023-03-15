@@ -4,7 +4,9 @@ import "test.proto";
 
 package hello.world;
 
-service TestService {  
+service TestService {
+  // uno!
+  // another line
   rpc noStreaming (TestMessage) returns (TestMessage);
   rpc clientStreaming (stream TestMessage) returns (TestMessage);
   rpc serverStreaming (TestMessage) returns (stream TestMessage);
