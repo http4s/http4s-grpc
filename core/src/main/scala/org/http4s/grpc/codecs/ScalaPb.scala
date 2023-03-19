@@ -14,7 +14,7 @@ object ScalaPb {
 
   private def decoderForGenerated[A <: GeneratedMessage](companion: GeneratedMessageCompanion[A]): Decoder[A] = {
     Decoder[A]((b: BitVector) =>
-      Attempt.fromTry(companion.validate(b.bytes.toArray))
+      Attempt.fromTry(companion.validate(b.bytes.toArrayUnsafe))
         .map(a => DecodeResult(a, BitVector.empty))
     )
   }
