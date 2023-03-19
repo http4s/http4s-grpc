@@ -93,7 +93,7 @@
         
         <h2 id="quick-start" class="section">Quick Start<a class="anchor-link right" href="#quick-start"><i class="icofont-laika">&#xef71;</i></a></h2>
         <p>First add the plugin to <code>project/plugins.sbt</code>.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">addSbtPlugin</span><span>(</span><span class="string-literal">&quot;io.chrisdavenport&quot;</span><span> % </span><span class="string-literal">&quot;sbt-http4s-grpc&quot;</span><span> % </span><span class="string-literal">&quot;0.0.2&quot;</span><span>)</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">addSbtPlugin</span><span>(</span><span class="string-literal">&quot;io.chrisdavenport&quot;</span><span> % </span><span class="string-literal">&quot;sbt-http4s-grpc&quot;</span><span> % </span><span class="string-literal">&quot;0.0.3&quot;</span><span>)</span></code></pre>
         <p>Then in your <code>build.sbt</code> enable the <code>Http4sGrpcPlugin</code> to configure the http4s-grpc codegen. In addition, you will need to configure the <a href="https://scalapb.github.io/">ScalaPB</a> codegen by following their <a href="https://scalapb.github.io/docs/installation">installation docs</a>.</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">enablePlugins</span><span>(</span><span class="type-name">Http4sGrpcPlugin</span><span>)
 </span><span class="type-name">Compile</span><span> / </span><span class="type-name">PB</span><span>.</span><span class="identifier">targets</span><span> ++= </span><span class="type-name">Seq</span><span>(
