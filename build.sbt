@@ -14,7 +14,7 @@ ThisBuild / tlMimaPreviousVersions := Set()
 val Scala212 = "2.12.17"
 val Scala213 = "2.13.10"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.2.2")
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.0")
 ThisBuild / scalaVersion := Scala213
 
 val catsV = "2.9.0"
