@@ -86,7 +86,7 @@ lazy val codeGeneratorPlugin = project
       "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
     ),
     addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.6"),
-    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.1")
+    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2")
   )
 
 lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
