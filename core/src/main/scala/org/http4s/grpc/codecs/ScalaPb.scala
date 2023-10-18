@@ -25,7 +25,7 @@ object ScalaPb {
 
   implicit def byteVectorTypeMapper: TypeMapper[ByteString, ByteVector] =
     new TypeMapper[ByteString, ByteVector] {
-      def toCustom(bs: ByteString) = ByteVector.view(bs.toByteArray)
+      def toCustom(bs: ByteString) = ByteVector.view(bs.toByteArray())
       def toBase(bv: ByteVector) = ByteString.copyFrom(bv.toArrayUnsafe)
     }
 }
