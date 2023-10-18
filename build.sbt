@@ -115,3 +115,6 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
 lazy val site = project.in(file("site"))
   .enablePlugins(TypelevelSitePlugin)
   .dependsOn(core.jvm)
+  .settings(
+    tlSiteIsTypelevelProject := Some(TypelevelProject.Affiliate),
+  )
