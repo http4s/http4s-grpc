@@ -12,15 +12,15 @@ ThisBuild / tlSonatypeUseLegacyHost := true
 ThisBuild / tlMimaPreviousVersions := Set()
 
 val Scala212 = "2.12.18"
-val Scala213 = "2.13.11"
+val Scala213 = "2.13.12"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.2.2")
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.1")
 ThisBuild / scalaVersion := Scala213
 
 val catsV = "2.9.0"
-val catsEffectV = "3.5.0"
-val fs2V = "3.7.0"
-val http4sV = "0.23.19"
+val catsEffectV = "3.5.2"
+val fs2V = "3.9.2"
+val http4sV = "0.23.23"
 val munitCatsEffectV = "2.0.0-M3"
 import scalapb.compiler.Version.scalapbVersion
 
