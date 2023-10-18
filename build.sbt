@@ -12,7 +12,7 @@ ThisBuild / tlSonatypeUseLegacyHost := true
 ThisBuild / tlMimaPreviousVersions := Set()
 
 val Scala212 = "2.12.18"
-val Scala213 = "2.13.11"
+val Scala213 = "2.13.12"
 
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.2.2")
 ThisBuild / scalaVersion := Scala213
