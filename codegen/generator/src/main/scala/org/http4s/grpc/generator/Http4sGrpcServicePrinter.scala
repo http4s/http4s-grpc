@@ -40,8 +40,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
-    val scalaInType = "_root_."+method.inputType.scalaType
-    val scalaOutType = "_root_."+method.outputType.scalaType
+    val scalaInType = method.inputType.scalaType
+    val scalaOutType = method.outputType.scalaType
     val ctx = s"ctx: $Ctx"
 
     s"def ${method.name}" + (method.streamType match {
@@ -62,8 +62,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val encode = s"$Codec.codecForGenerated(_root_.${method.inputType.scalaType})"
-    val decode = s"$Codec.codecForGenerated(_root_.${method.outputType.scalaType})"
+    val encode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
+    val decode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
