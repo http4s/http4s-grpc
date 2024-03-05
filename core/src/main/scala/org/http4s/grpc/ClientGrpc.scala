@@ -7,7 +7,6 @@ import org.http4s._
 import org.http4s.client.Client
 import scodec.{Encoder, Decoder}
 import fs2._
-import org.http4s.ember.core.h2.H2Keys
 import org.http4s.grpc.codecs.NamedHeaders
 
 object ClientGrpc {
@@ -25,7 +24,6 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
-      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp => 
       handleFailure(resp.headers) >>
@@ -51,7 +49,6 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
-      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     Stream.resource(client.run(req)).flatMap( resp =>
       Stream.eval(handleFailure(resp.headers)).drain ++
@@ -76,7 +73,6 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encode(encode)(message).mask)
-      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
     client.run(req).use( resp =>
       handleFailure(resp.headers) >>
@@ -101,7 +97,6 @@ object ClientGrpc {
       .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
       .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
       .withBodyStream(codecs.Messages.encode(encode)(message).mask)
-      .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
 
     Stream.resource(client.run(req)).flatMap( resp =>

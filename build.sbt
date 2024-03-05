@@ -18,9 +18,9 @@ ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.1")
 ThisBuild / scalaVersion := Scala213
 
 val catsV = "2.10.0"
-val catsEffectV = "3.5.2"
-val fs2V = "3.9.2"
-val http4sV = "0.23.23"
+val catsEffectV = "3.5.3"
+val fs2V = "3.9.4"
+val http4sV = "0.23.25"
 val munitCatsEffectV = "2.0.0-M3"
 import scalapb.compiler.Version.scalapbVersion
 
@@ -43,8 +43,8 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "co.fs2"                      %%% "fs2-scodec"                 % fs2V,
 
       "org.http4s"                  %%% "http4s-dsl"                 % http4sV,
-      "org.http4s"                  %%% "http4s-ember-server"        % http4sV,
-      "org.http4s"                  %%% "http4s-ember-client"        % http4sV,
+      "org.http4s"                  %%% "http4s-server"              % http4sV,
+      "org.http4s"                  %%% "http4s-client"              % http4sV,
 
       "org.typelevel"               %%% "munit-cats-effect"        % munitCatsEffectV         % Test,
 
