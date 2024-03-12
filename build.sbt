@@ -1,3 +1,5 @@
+import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
+
 ThisBuild / tlBaseVersion := "0.0" // your current series x.y
 
 ThisBuild / organization := "io.chrisdavenport"
@@ -30,6 +32,9 @@ import scalapb.compiler.Version.scalapbVersion
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
   .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
+  .settings(
+    unusedCompileDependenciesFilter -= moduleFilter()
+  )
   .disablePlugins(HeaderPlugin)
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -49,6 +54,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion,
     ),
+    unusedCompileDependenciesFilter -= moduleFilter(),
   )
   .jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
@@ -64,6 +70,7 @@ lazy val codeGenerator =
       libraryDependencies ++= Seq(
         "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
       ),
+      unusedCompileDependenciesFilter -= moduleFilter(),
     )
     .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
@@ -91,6 +98,7 @@ lazy val codeGeneratorPlugin = project
     ),
     addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7"),
     addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
+    unusedCompileDependenciesFilter -= moduleFilter(),
   )
   .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
@@ -117,6 +125,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
       "sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"
     ),
     githubWorkflowArtifactUpload := false,
+    unusedCompileDependenciesFilter -= moduleFilter(),
   )
   .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
