@@ -3,12 +3,13 @@ package org.http4s.grpc
 import cats._
 import cats.effect._
 import cats.syntax.all._
+import fs2._
 import org.http4s._
 import org.http4s.client.Client
-import scodec.{Encoder, Decoder}
-import fs2._
 import org.http4s.ember.core.h2.H2Keys
 import org.http4s.grpc.codecs.NamedHeaders
+import scodec.Decoder
+import scodec.Encoder
 
 object ClientGrpc {
   def unaryToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen

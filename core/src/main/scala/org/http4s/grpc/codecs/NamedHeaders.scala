@@ -1,18 +1,19 @@
 package org.http4s.grpc.codecs
 
-import scala.concurrent.duration._
+import cats.parse.Parser
 import cats.syntax.all._
 import org.http4s.Header
+import org.http4s.ParseResult
+import org.http4s.internal.parsing.CommonRules.ows
+import org.http4s.parser.AdditionalRules
 import org.typelevel.ci.CIString
 
-import cats.parse.Parser
-import org.http4s.parser.AdditionalRules
-import org.http4s.internal.parsing.CommonRules.ows
-import org.http4s.ParseResult
+import scala.concurrent.duration._
 
 object NamedHeaders {
 
-  case class GrpcTimeout(duration: FiniteDuration)
+  final case class GrpcTimeout(duration: FiniteDuration)
+
   object GrpcTimeout {
     private val parser = (
       (AdditionalRules.NonNegativeLong <* ows) ~
@@ -54,7 +55,8 @@ object NamedHeaders {
   }
 
   // https://grpc.github.io/grpc/core/md_doc_statuscodes.html
-  case class GrpcStatus(statusCode: Int)
+  final case class GrpcStatus(statusCode: Int)
+
   object GrpcStatus {
     private val parser = cats.parse.Numbers.nonNegativeIntString.map(s => GrpcStatus(s.toInt))
 
@@ -67,7 +69,8 @@ object NamedHeaders {
     )
   }
 
-  case class GrpcMessage(message: String)
+  final case class GrpcMessage(message: String)
+
   object GrpcMessage {
 
     implicit val header: Header[GrpcMessage, Header.Single] = Header.create(

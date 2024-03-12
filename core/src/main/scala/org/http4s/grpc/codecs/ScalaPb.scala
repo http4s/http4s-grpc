@@ -1,9 +1,16 @@
 package org.http4s.grpc.codecs
 
 import com.google.protobuf.ByteString
-import scodec.{Encoder, Decoder, Attempt, Codec, DecodeResult}
-import scalapb.{GeneratedMessage, GeneratedMessageCompanion, TypeMapper}
-import scodec.bits.{ByteVector, BitVector}
+import scalapb.GeneratedMessage
+import scalapb.GeneratedMessageCompanion
+import scalapb.TypeMapper
+import scodec.Attempt
+import scodec.Codec
+import scodec.DecodeResult
+import scodec.Decoder
+import scodec.Encoder
+import scodec.bits.BitVector
+import scodec.bits.ByteVector
 
 // Should this be its own subproject?
 object ScalaPb {

@@ -1,16 +1,18 @@
 package org.http4s.grpc
 
-import cats.syntax.all._
 import cats.effect._
-import org.http4s._
-import scodec.{Encoder, Decoder}
+import cats.syntax.all._
 import fs2._
+import org.http4s._
 import org.http4s.dsl.request._
+import org.http4s.grpc.codecs.NamedHeaders
 import org.http4s.headers.Trailer
 import org.typelevel.ci._
-import org.http4s.grpc.codecs.NamedHeaders
-import scala.concurrent.duration._
+import scodec.Decoder
+import scodec.Encoder
+
 import java.util.concurrent.TimeoutException
+import scala.concurrent.duration._
 
 object ServerGrpc {
 

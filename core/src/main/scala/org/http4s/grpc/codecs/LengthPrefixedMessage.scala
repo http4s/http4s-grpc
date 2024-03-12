@@ -1,11 +1,12 @@
 package org.http4s.grpc.codecs
 
+import cats.syntax.all._
 import scodec._
 import scodec.bits._
 import scodec.codecs._
-import cats.syntax.all._
 
-case class LengthPrefixedMessage(compressed: Boolean, message: ByteVector)
+final case class LengthPrefixedMessage(compressed: Boolean, message: ByteVector)
+
 object LengthPrefixedMessage {
 
   val codec: scodec.Codec[LengthPrefixedMessage] = 

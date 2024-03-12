@@ -55,13 +55,15 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
   )
 
-lazy val codeGenerator = project.in(file("codegen/generator")).settings(
-  name := "http4s-grpc-generator",
-  crossScalaVersions := Seq(Scala212),
-  libraryDependencies ++= Seq(
-    "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
-  )
-)
+lazy val codeGenerator =
+  project.in(file("codegen/generator"))
+    .settings(
+      name := "http4s-grpc-generator",
+      crossScalaVersions := Seq(Scala212),
+      libraryDependencies ++= Seq(
+        "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
+      )
+    ).disablePlugins(ScalafixPlugin)
 
 lazy val codegenFullName =
   "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
@@ -87,7 +89,7 @@ lazy val codeGeneratorPlugin = project
     ),
     addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7"),
     addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2")
-  )
+  ).disablePlugins(ScalafixPlugin)
 
 lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -109,8 +111,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
     buildInfoKeys := Seq[BuildInfoKey]("sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"),
     githubWorkflowArtifactUpload := false
-  )
-
+  ).disablePlugins(ScalafixPlugin)
 
 lazy val site = project.in(file("site"))
   .enablePlugins(TypelevelSitePlugin)

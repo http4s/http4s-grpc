@@ -1,8 +1,8 @@
 package org.http4s.grpc.codecs
 
 import cats._
-import cats.syntax.all._
 import cats.effect._
+import cats.syntax.all._
 import fs2._
 import scodec.Attempt
 

@@ -1,19 +1,21 @@
 package hello.world
 
-import cats.syntax.all._
 import cats.effect.IO
+import cats.syntax.all._
 import fs2.Stream
 import munit._
-import org.http4s.client.Client
 import org.http4s.Headers
 import org.http4s.Uri
+import org.http4s.client.Client
 import org.http4s.syntax.all._
-import org.scalacheck._, Arbitrary.arbitrary
+import org.scalacheck._
 import org.scalacheck.effect.PropF.forAllF
+
+import Arbitrary.arbitrary
 
 class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   
-  val impl = new TestService[IO] {
+  val impl: TestService[IO] = new TestService[IO] {
     def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
       IO(request)
 
@@ -37,7 +39,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
-  val client = TestService.fromClient[IO](
+  val client: TestService[IO] = TestService.fromClient[IO](
     Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
     Uri()
   )
