@@ -2,14 +2,12 @@ import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 
 ThisBuild / tlBaseVersion := "0.0" // your current series x.y
 
-ThisBuild / organization := "io.chrisdavenport"
-ThisBuild / organizationName := "Christopher Davenport"
 ThisBuild / licenses := Seq(License.MIT)
 ThisBuild / developers := List(
   tlGitHubDev("christopherdavenport", "Christopher Davenport")
 )
 ThisBuild / tlCiReleaseBranches := Seq("main")
-ThisBuild / tlSonatypeUseLegacyHost := true
+ThisBuild / tlSonatypeUseLegacyHost := false
 
 ThisBuild / tlMimaPreviousVersions := Set()
 
