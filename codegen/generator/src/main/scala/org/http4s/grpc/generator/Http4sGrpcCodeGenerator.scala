@@ -50,7 +50,7 @@ object Http4sGrpcCodeGenerator extends CodeGenApp {
     for {
       paramsAndUnparsed <- GeneratorParams.fromStringCollectUnrecognized(params)
       params = paramsAndUnparsed._1
-      unparsed = paramsAndUnparsed._2
+      // unparsed = paramsAndUnparsed._2
     } yield params
 
   def process(request: CodeGenRequest): CodeGenResponse =

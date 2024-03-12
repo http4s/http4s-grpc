@@ -81,8 +81,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   }
 
   private[this] def serviceBindingImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    val serviceCall = s"serviceImpl.${method.name}"
-    val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
+    // val serviceCall = s"serviceImpl.${method.name}"
+    // val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
 
     val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
     val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
