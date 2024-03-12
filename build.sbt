@@ -100,6 +100,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
   .enablePlugins(LocalCodeGenPlugin, BuildInfoPlugin, NoPublishPlugin)
   .dependsOn(core)
   .settings(
+    tlFatalWarnings := false,
     codeGenClasspath := (codeGenerator / Compile / fullClasspath).value,
     Compile / PB.targets := Seq(
       scalapb.gen(grpc = false) -> (Compile / sourceManaged).value / "scalapb",
