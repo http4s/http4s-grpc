@@ -17,6 +17,9 @@ val Scala213 = "2.13.12"
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.1")
 ThisBuild / scalaVersion := Scala213
 
+// disable sbt-header plugin until we are not aligned on the license
+ThisBuild / headerCheckAll := Nil
+
 val catsV = "2.10.0"
 val catsEffectV = "3.5.2"
 val fs2V = "3.9.2"
@@ -27,6 +30,7 @@ import scalapb.compiler.Version.scalapbVersion
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
   .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
+  .disablePlugins(HeaderPlugin)
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -49,6 +53,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
   )
+  .disablePlugins(HeaderPlugin)
 
 lazy val codeGenerator =
   project
@@ -60,7 +65,7 @@ lazy val codeGenerator =
         "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
       ),
     )
-    .disablePlugins(ScalafixPlugin)
+    .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
 lazy val codegenFullName =
   "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
@@ -87,7 +92,7 @@ lazy val codeGeneratorPlugin = project
     addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7"),
     addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
   )
-  .disablePlugins(ScalafixPlugin)
+  .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
 lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -112,7 +117,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     ),
     githubWorkflowArtifactUpload := false,
   )
-  .disablePlugins(ScalafixPlugin)
+  .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
 lazy val site = project
   .in(file("site"))
