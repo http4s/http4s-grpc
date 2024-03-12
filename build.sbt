@@ -33,37 +33,34 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("core"))
   .settings(
     name := "http4s-grpc",
-
     libraryDependencies ++= Seq(
-      "org.typelevel"               %%% "cats-core"                  % catsV,
-      "org.typelevel"               %%% "cats-effect"                % catsEffectV,
-
-      "co.fs2"                      %%% "fs2-core"                   % fs2V,
-      "co.fs2"                      %%% "fs2-io"                     % fs2V,
-      "co.fs2"                      %%% "fs2-scodec"                 % fs2V,
-
-      "org.http4s"                  %%% "http4s-dsl"                 % http4sV,
-      "org.http4s"                  %%% "http4s-ember-server"        % http4sV,
-      "org.http4s"                  %%% "http4s-ember-client"        % http4sV,
-
-      "org.typelevel"               %%% "munit-cats-effect"        % munitCatsEffectV         % Test,
-
+      "org.typelevel" %%% "cats-core" % catsV,
+      "org.typelevel" %%% "cats-effect" % catsEffectV,
+      "co.fs2" %%% "fs2-core" % fs2V,
+      "co.fs2" %%% "fs2-io" % fs2V,
+      "co.fs2" %%% "fs2-scodec" % fs2V,
+      "org.http4s" %%% "http4s-dsl" % http4sV,
+      "org.http4s" %%% "http4s-ember-server" % http4sV,
+      "org.http4s" %%% "http4s-ember-client" % http4sV,
+      "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion,
-
-    )
-  ).jsSettings(
-    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
+    ),
+  )
+  .jsSettings(
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
   )
 
 lazy val codeGenerator =
-  project.in(file("codegen/generator"))
+  project
+    .in(file("codegen/generator"))
     .settings(
       name := "http4s-grpc-generator",
       crossScalaVersions := Seq(Scala212),
       libraryDependencies ++= Seq(
         "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
-      )
-    ).disablePlugins(ScalafixPlugin)
+      ),
+    )
+    .disablePlugins(ScalafixPlugin)
 
 lazy val codegenFullName =
   "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
@@ -88,8 +85,9 @@ lazy val codeGeneratorPlugin = project
       "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
     ),
     addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7"),
-    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2")
-  ).disablePlugins(ScalafixPlugin)
+    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
+  )
+  .disablePlugins(ScalafixPlugin)
 
 lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
@@ -100,22 +98,26 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     codeGenClasspath := (codeGenerator / Compile / fullClasspath).value,
     Compile / PB.targets := Seq(
       scalapb.gen(grpc = false) -> (Compile / sourceManaged).value / "scalapb",
-      genModule(codegenFullName + "$") -> (Compile / sourceManaged).value / "http4s-grpc"
+      genModule(codegenFullName + "$") -> (Compile / sourceManaged).value / "http4s-grpc",
     ),
     Compile / PB.protoSources += baseDirectory.value.getParentFile / "src" / "main" / "protobuf",
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion % "protobuf",
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
-      "org.typelevel" %%% "scalacheck-effect-munit" % "2.0.0-M2" % Test
+      "org.typelevel" %%% "scalacheck-effect-munit" % "2.0.0-M2" % Test,
     ),
     buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
-    buildInfoKeys := Seq[BuildInfoKey]("sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"),
-    githubWorkflowArtifactUpload := false
-  ).disablePlugins(ScalafixPlugin)
+    buildInfoKeys := Seq[BuildInfoKey](
+      "sourceManaged" -> (Compile / sourceManaged).value / "http4s-grpc"
+    ),
+    githubWorkflowArtifactUpload := false,
+  )
+  .disablePlugins(ScalafixPlugin)
 
-lazy val site = project.in(file("site"))
+lazy val site = project
+  .in(file("site"))
   .enablePlugins(TypelevelSitePlugin)
   .dependsOn(core.jvm)
   .settings(
-    tlSiteIsTypelevelProject := Some(TypelevelProject.Affiliate),
+    tlSiteIsTypelevelProject := Some(TypelevelProject.Affiliate)
   )

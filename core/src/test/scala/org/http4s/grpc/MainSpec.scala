@@ -6,7 +6,7 @@ import munit.CatsEffectSuite
 class MainSpec extends CatsEffectSuite {
 
   test("Main should exit succesfully") {
-      assertEquals(ExitCode.Success, ExitCode.Success)
+    assertEquals(ExitCode.Success, ExitCode.Success)
   }
 
 }

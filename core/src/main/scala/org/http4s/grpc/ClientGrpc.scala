@@ -12,107 +12,164 @@ import scodec.Decoder
 import scodec.Encoder
 
 object ClientGrpc {
-  def unaryToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
-    encode: Encoder[A],
-    decode: Decoder[B],
-    serviceName: String,
-    methodName: String,
+  def unaryToUnary[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
   )( // Stuff We can apply at application scope
-    client: Client[F], baseUri: Uri
+      client: Client[F],
+      baseUri: Uri,
   )( // Stuff we apply at invocation
-    message: A, ctx: Headers
+      message: A,
+      ctx: Headers,
   ): F[B] = {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
-      .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
-      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
+      .putHeaders(
+        SharedGrpc.TE,
+        SharedGrpc.GrpcEncoding,
+        SharedGrpc.GrpcAcceptEncoding,
+        SharedGrpc.ContentType,
+      )
+      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw): _*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    client.run(req).use( resp => 
-      handleFailure(resp.headers) >>
-      codecs.Messages.decodeSingle(decode)(resp.body).handleErrorWith(
-        e => resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B])
-      ) <*
-      resp.trailerHeaders.flatMap(handleFailure[F])
-    )
+    client
+      .run(req)
+      .use(resp =>
+        handleFailure(resp.headers) >>
+          codecs.Messages
+            .decodeSingle(decode)(resp.body)
+            .handleErrorWith(e =>
+              resp.trailerHeaders
+                .flatMap(handleFailure[F])
+                .attempt
+                .flatMap(t => t.as(e).merge.raiseError[F, B])
+            ) <*
+          resp.trailerHeaders.flatMap(handleFailure[F])
+      )
   }
 
-
-  def unaryToStream[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
-    encode: Encoder[A],
-    decode: Decoder[B],
-    serviceName: String,
-    methodName: String,
+  def unaryToStream[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
   )( // Stuff We can apply at application scope
-    client: Client[F], baseUri: Uri
+      client: Client[F],
+      baseUri: Uri,
   )( // Stuff we apply at invocation
-    message: A, ctx: Headers
+      message: A,
+      ctx: Headers,
   ): Stream[F, B] = {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
-      .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
-      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
+      .putHeaders(
+        SharedGrpc.TE,
+        SharedGrpc.GrpcEncoding,
+        SharedGrpc.GrpcAcceptEncoding,
+        SharedGrpc.ContentType,
+      )
+      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw): _*)
       .withBodyStream(codecs.Messages.encodeSingle(encode)(message))
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    Stream.resource(client.run(req)).flatMap( resp =>
-      Stream.eval(handleFailure(resp.headers)).drain ++
-      codecs.Messages.decode[F, B](decode)(resp.body).handleErrorWith(
-        e => Stream.eval(resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B]))
-      ) ++
-      Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
-    )
+    Stream
+      .resource(client.run(req))
+      .flatMap(resp =>
+        Stream.eval(handleFailure(resp.headers)).drain ++
+          codecs.Messages
+            .decode[F, B](decode)(resp.body)
+            .handleErrorWith(e =>
+              Stream.eval(
+                resp.trailerHeaders
+                  .flatMap(handleFailure[F])
+                  .attempt
+                  .flatMap(t => t.as(e).merge.raiseError[F, B])
+              )
+            ) ++
+          Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
+      )
   }
 
-  def streamToUnary[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
-    encode: Encoder[A],
-    decode: Decoder[B],
-    serviceName: String,
-    methodName: String,
+  def streamToUnary[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
   )( // Stuff We can apply at application scope
-    client: Client[F], baseUri: Uri
+      client: Client[F],
+      baseUri: Uri,
   )( // Stuff we apply at invocation
-    message: Stream[F, A], ctx: Headers
+      message: Stream[F, A],
+      ctx: Headers,
   ): F[B] = {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
-      .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
-      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
+      .putHeaders(
+        SharedGrpc.TE,
+        SharedGrpc.GrpcEncoding,
+        SharedGrpc.GrpcAcceptEncoding,
+        SharedGrpc.ContentType,
+      )
+      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw): _*)
       .withBodyStream(codecs.Messages.encode(encode)(message).mask)
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-    client.run(req).use( resp =>
-      handleFailure(resp.headers) >>
-      codecs.Messages.decodeSingle(decode)(resp.body).handleErrorWith(
-        e => resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B])
-      ) <*
-      resp.trailerHeaders.flatMap(handleFailure[F])
-    )
+    client
+      .run(req)
+      .use(resp =>
+        handleFailure(resp.headers) >>
+          codecs.Messages
+            .decodeSingle(decode)(resp.body)
+            .handleErrorWith(e =>
+              resp.trailerHeaders
+                .flatMap(handleFailure[F])
+                .attempt
+                .flatMap(t => t.as(e).merge.raiseError[F, B])
+            ) <*
+          resp.trailerHeaders.flatMap(handleFailure[F])
+      )
   }
 
-  def streamToStream[F[_]: Concurrent, A, B](// Stuff We can provide via codegen
-    encode: Encoder[A],
-    decode: Decoder[B],
-    serviceName: String,
-    methodName: String,
+  def streamToStream[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
   )( // Stuff We can apply at application scope
-    client: Client[F], baseUri: Uri
+      client: Client[F],
+      baseUri: Uri,
   )( // Stuff we apply at invocation
-    message: Stream[F, A], ctx: Headers
+      message: Stream[F, A],
+      ctx: Headers,
   ): Stream[F, B] = {
     val req = Request(Method.POST, baseUri / serviceName / methodName, HttpVersion.`HTTP/2`)
-      .putHeaders(SharedGrpc.TE, SharedGrpc.GrpcEncoding, SharedGrpc.GrpcAcceptEncoding, SharedGrpc.ContentType)
-      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw):_*)
+      .putHeaders(
+        SharedGrpc.TE,
+        SharedGrpc.GrpcEncoding,
+        SharedGrpc.GrpcAcceptEncoding,
+        SharedGrpc.ContentType,
+      )
+      .putHeaders(ctx.headers.map(Header.ToRaw.rawToRaw): _*)
       .withBodyStream(codecs.Messages.encode(encode)(message).mask)
       .withAttribute(H2Keys.Http2PriorKnowledge, ())
 
-
-    Stream.resource(client.run(req)).flatMap( resp =>
-
-      Stream.eval(handleFailure(resp.headers)).drain ++
-      codecs.Messages.decode[F, B](decode)(resp.body).handleErrorWith(
-        e => Stream.eval(resp.trailerHeaders.flatMap(handleFailure[F]).attempt.flatMap(t => t.as(e).merge.raiseError[F, B]))
-      ) ++
-      Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
-    )
+    Stream
+      .resource(client.run(req))
+      .flatMap(resp =>
+        Stream.eval(handleFailure(resp.headers)).drain ++
+          codecs.Messages
+            .decode[F, B](decode)(resp.body)
+            .handleErrorWith(e =>
+              Stream.eval(
+                resp.trailerHeaders
+                  .flatMap(handleFailure[F])
+                  .attempt
+                  .flatMap(t => t.as(e).merge.raiseError[F, B])
+              )
+            ) ++
+          Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
+      )
   }
 
   private def handleFailure[F[_]: MonadThrow](headers: Headers): F[Unit] = {
@@ -127,6 +184,4 @@ object ClientGrpc {
     }
   }
 
-
 }
-

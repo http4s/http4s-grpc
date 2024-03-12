@@ -17,8 +17,8 @@ object NamedHeaders {
   object GrpcTimeout {
     private val parser = (
       (AdditionalRules.NonNegativeLong <* ows) ~
-      Parser.charIn('H', 'M', 'S', 'm', 'u', 'n').mapFilter(c => decodeTimeUnit(c.toString()))
-    ).map{ case (value, unit) => 
+        Parser.charIn('H', 'M', 'S', 'm', 'u', 'n').mapFilter(c => decodeTimeUnit(c.toString()))
+    ).map { case (value, unit) =>
       GrpcTimeout(FiniteDuration.apply(value, unit))
     }
 
@@ -30,7 +30,7 @@ object NamedHeaders {
         val out = value * x
         s"$out $unit"
       },
-      (s: String) => ParseResult.fromParser(parser, "Invalid GrpcTimeout")(s)
+      (s: String) => ParseResult.fromParser(parser, "Invalid GrpcTimeout")(s),
     )
 
     private def encodeTimeUnit(t: TimeUnit): (Int, String) = t match {
@@ -43,7 +43,7 @@ object NamedHeaders {
       case DAYS => (24, "H")
     }
 
-    private def decodeTimeUnit(s: String): Option[TimeUnit] =  s match {
+    private def decodeTimeUnit(s: String): Option[TimeUnit] = s match {
       case "H" => HOURS.some
       case "M" => MINUTES.some
       case "S" => SECONDS.some
@@ -62,10 +62,8 @@ object NamedHeaders {
 
     implicit val header: Header[GrpcStatus, Header.Single] = Header.create(
       CIString("grpc-status"),
-      (t: GrpcStatus) => {
-        t.statusCode.toString()
-      },
-      (s: String) => ParseResult.fromParser(parser, "Invalid GrpcStatus")(s)
+      (t: GrpcStatus) => t.statusCode.toString(),
+      (s: String) => ParseResult.fromParser(parser, "Invalid GrpcStatus")(s),
     )
   }
 
@@ -75,10 +73,8 @@ object NamedHeaders {
 
     implicit val header: Header[GrpcMessage, Header.Single] = Header.create(
       CIString("grpc-message"),
-      (t: GrpcMessage) => {
-        t.message
-      },
-      (s: String) => ParseResult.success(GrpcMessage(s))
+      (t: GrpcMessage) => t.message,
+      (s: String) => ParseResult.success(GrpcMessage(s)),
     )
   }
 
