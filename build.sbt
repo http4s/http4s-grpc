@@ -20,6 +20,9 @@ ThisBuild / scalaVersion := Scala213
 // disable sbt-header plugin until we are not aligned on the license
 ThisBuild / headerCheckAll := Nil
 
+// temporarily disable dependency submissions in CI
+ThisBuild / tlCiDependencyGraphJob := false
+
 val catsV = "2.10.0"
 val catsEffectV = "3.5.2"
 val fs2V = "3.9.2"
