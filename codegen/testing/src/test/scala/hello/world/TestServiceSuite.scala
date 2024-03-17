@@ -1,19 +1,21 @@
 package hello.world
 
-import cats.syntax.all._
 import cats.effect.IO
+import cats.syntax.all._
 import fs2.Stream
 import munit._
-import org.http4s.client.Client
 import org.http4s.Headers
 import org.http4s.Uri
+import org.http4s.client.Client
 import org.http4s.syntax.all._
-import org.scalacheck._, Arbitrary.arbitrary
+import org.scalacheck._
 import org.scalacheck.effect.PropF.forAllF
 
+import Arbitrary.arbitrary
+
 class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
-  
-  val impl = new TestService[IO] {
+
+  val impl: TestService[IO] = new TestService[IO] {
     def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
       IO(request)
 
@@ -33,13 +35,15 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     for {
       a <- arbitrary[String]
       b <- arbitrary[Int]
-      c <- Gen.option(Gen.oneOf(Color.RED, Color.GREEN, Color.BLUE).map(TestMessage.NestedMessage(_)))
+      c <- Gen.option(
+        Gen.oneOf(Color.RED, Color.GREEN, Color.BLUE).map(TestMessage.NestedMessage(_))
+      )
     } yield TestMessage(a, b, c)
   )
 
-  val client = TestService.fromClient[IO](
+  val client: TestService[IO] = TestService.fromClient[IO](
     Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
-    Uri()
+    Uri(),
   )
 
   test("no streaming") {
@@ -50,7 +54,9 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   test("client streaming") {
     forAllF { (msg: TestMessage, tail: List[TestMessage]) =>
-      client.clientStreaming(Stream.emits(msg :: tail), Headers.empty).assertEquals(tail.lastOption.getOrElse(msg))
+      client
+        .clientStreaming(Stream.emits(msg :: tail), Headers.empty)
+        .assertEquals(tail.lastOption.getOrElse(msg))
     }
   }
 
@@ -68,36 +74,43 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   test("Routes returns missing method") {
     val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
-    client.run(org.http4s.Request[IO](org.http4s.Method.POST, uri"/hello.world.TestService/missingMethod"))
-      .use{ resp =>
+    client
+      .run(
+        org.http4s.Request[IO](org.http4s.Method.POST, uri"/hello.world.TestService/missingMethod")
+      )
+      .use { resp =>
         val headers = resp.headers
         val status = headers.get[org.http4s.grpc.codecs.NamedHeaders.GrpcStatus]
         status.pure[IO]
-      }.assertEquals(
+      }
+      .assertEquals(
         Some(org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(12))
       )
   }
 
-  test("Client fails with initial failure"){
+  test("Client fails with initial failure") {
     forAllF { (msg: TestMessage) =>
-      val route = org.http4s.HttpRoutes.of[IO]{
-        case _ => org.http4s.Response(org.http4s.Status.Ok)
+      val route = org.http4s.HttpRoutes.of[IO] { case _ =>
+        org.http4s
+          .Response(org.http4s.Status.Ok)
           .putHeaders(
             org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(12)
-          ).pure[IO]
+          )
+          .pure[IO]
       }
       val client = TestService.fromClient[IO](
         Client.fromHttpApp(route.orNotFound),
-        Uri()
+        Uri(),
       )
-      client.`export`(msg, Headers.empty)
+      client
+        .`export`(msg, Headers.empty)
         .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
         .map(_.leftMap(grpcFailed => grpcFailed.status))
         .assertEquals(Either.left(12))
     }
   }
 
-  test("Server Fails in Trailers"){
+  test("Server Fails in Trailers") {
 
     forAllF { (msg: TestMessage) =>
       val ts = new TestService[IO] {
@@ -117,10 +130,11 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       }
       val client = TestService.fromClient[IO](
         Client.fromHttpApp(TestService.toRoutes[IO](ts).orNotFound),
-        Uri()
+        Uri(),
       )
 
-      client.noStreaming(msg, Headers.empty)
+      client
+        .noStreaming(msg, Headers.empty)
         .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
         .map(_.leftMap(grpcFailed => grpcFailed.status))
         .assertEquals(Either.left(2))

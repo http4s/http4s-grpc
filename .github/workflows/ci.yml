@@ -26,11 +26,25 @@ jobs:
   build:
     name: Build and Test
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         scala: [2.13, 3]
-        java: [temurin@8]
+        java: [temurin@8, temurin@11, temurin@17]
         project: [http4s-grpcJVM, http4s-grpcJS, http4s-grpcNative]
+        exclude:
+          - scala: 3
+            java: temurin@11
+          - scala: 3
+            java: temurin@17
+          - project: http4s-grpcJS
+            java: temurin@11
+          - project: http4s-grpcJS
+            java: temurin@17
+          - project: http4s-grpcNative
+            java: temurin@11
+          - project: http4s-grpcNative
+            java: temurin@17
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -42,7 +56,7 @@ jobs:
       - name: Setup Java (temurin@8)
         id: setup-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 8
@@ -52,8 +66,38 @@ jobs:
         if: matrix.java == 'temurin@8' && steps.setup-java-temurin-8.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@11)
+        id: setup-java-temurin-11
+        if: matrix.java == 'temurin@11'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
+
+      - name: Check headers and formatting
+        if: matrix.java == 'temurin@8' && matrix.os == 'ubuntu-latest'
+        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' headerCheckAll scalafmtCheckAll 'project /' scalafmtSbtCheck
 
       - name: scalaJSLink
         if: matrix.project == 'http4s-grpcJS'
@@ -74,6 +118,14 @@ jobs:
         if: matrix.java == 'temurin@8' && matrix.os == 'ubuntu-latest'
         run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' doc
 
+      - name: Check scalafix lints
+        if: matrix.java == 'temurin@8' && !startsWith(matrix.scala, '3')
+        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' 'scalafixAll --check'
+
+      - name: Check unused compile dependencies
+        if: matrix.java == 'temurin@8'
+        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' unusedCompileDependenciesTest
+
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
         run: mkdir -p core/.native/target core/.js/target codegen/plugin/target core/.jvm/target codegen/generator/target project/target
@@ -84,7 +136,7 @@ jobs:
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.scala }}-${{ matrix.project }}
           path: targets.tar
@@ -107,7 +159,7 @@ jobs:
       - name: Setup Java (temurin@8)
         id: setup-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 8
@@ -117,8 +169,34 @@ jobs:
         if: matrix.java == 'temurin@8' && steps.setup-java-temurin-8.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@11)
+        id: setup-java-temurin-11
+        if: matrix.java == 'temurin@11'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Download target directories (2.13, http4s-grpcJVM)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-http4s-grpcJVM
 
@@ -128,7 +206,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.13, http4s-grpcJS)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-http4s-grpcJS
 
@@ -138,7 +216,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.13, http4s-grpcNative)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-http4s-grpcNative
 
@@ -148,7 +226,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (3, http4s-grpcJVM)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-3-http4s-grpcJVM
 
@@ -158,7 +236,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (3, http4s-grpcJS)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-3-http4s-grpcJS
 
@@ -168,7 +246,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (3, http4s-grpcNative)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-3-http4s-grpcNative
 
@@ -201,13 +279,12 @@ jobs:
           SONATYPE_CREDENTIAL_HOST: ${{ secrets.SONATYPE_CREDENTIAL_HOST }}
         run: sbt tlCiRelease
 
-  dependency-submission:
-    name: Submit Dependencies
-    if: github.event_name != 'pull_request'
+  site:
+    name: Generate Site
     strategy:
       matrix:
         os: [ubuntu-latest]
-        java: [temurin@8]
+        java: [temurin@11]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -218,7 +295,7 @@ jobs:
       - name: Setup Java (temurin@8)
         id: setup-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 8
@@ -228,36 +305,30 @@ jobs:
         if: matrix.java == 'temurin@8' && steps.setup-java-temurin-8.outputs.cache-hit == 'false'
         run: sbt +update
 
-      - name: Submit Dependencies
-        uses: scalacenter/sbt-dependency-submission@v2
-        with:
-          modules-ignore: http4s-grpcjvm_2.13 http4s-grpcjvm_3 codegeneratortesting_native0.4_2.13 codegeneratortesting_native0.4_3 codegeneratortesting_sjs1_2.13 codegeneratortesting_sjs1_3 site_2.13 site_3 http4s-grpcjs_2.13 http4s-grpcjs_3 http4s-grpcnative_2.13 http4s-grpcnative_3 codegeneratortesting_2.13 codegeneratortesting_3
-          configs-ignore: test scala-tool scala-doc-tool test-internal
-
-  site:
-    name: Generate Site
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        java: [temurin@8]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout current branch (full)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (temurin@8)
-        id: setup-java-temurin-8
-        if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v3
+      - name: Setup Java (temurin@11)
+        id: setup-java-temurin-11
+        if: matrix.java == 'temurin@11'
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 8
+          java-version: 11
           cache: sbt
 
       - name: sbt update
-        if: matrix.java == 'temurin@8' && steps.setup-java-temurin-8.outputs.cache-hit == 'false'
+        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Generate site
