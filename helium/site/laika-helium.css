@@ -1,33 +1,33 @@
 :root {
-  --primary-color: #385a70;
-  --primary-light: #f4f8fa;
-  --primary-medium: #8ebac7;
-  --secondary-color: #fe4559;
-  --text-color: #21303f;
+  --primary-color: #5B7980;
+  --primary-light: #e9f1f2;
+  --primary-medium: #a7d4de;
+  --secondary-color: #cc6600;
+  --text-color: #5f5f5f;
   --bg-color: #ffffff;
-  --gradient-top: #b0cfd8;
-  --gradient-bottom: #f4f8fa;
+  --gradient-top: #334044;
+  --gradient-bottom: #5B7980;
   --component-color: var(--primary-color);
   --component-area-bg: var(--primary-light);
   --component-hover: var(--secondary-color);
   --component-border: var(--primary-medium);
   --subtle-highlight: rgba(0, 0, 0, 0.05);
-  --messages-info: #385a70;
-  --messages-info-light: #ddeaed;
-  --messages-warning: #385a70;
-  --messages-warning-light: #f9f5d9;
-  --messages-error: #385a70;
-  --messages-error-light: #ffe7e7;
-  --syntax-base1: #21303f;
-  --syntax-base2: #73ad9b;
+  --messages-info: #007c99;
+  --messages-info-light: #ebf6f7;
+  --messages-warning: #b1a400;
+  --messages-warning-light: #fcfacd;
+  --messages-error: #d83030;
+  --messages-error-light: #ffe9e3;
+  --syntax-base1: #2a3236;
+  --syntax-base2: #8c878e;
   --syntax-base3: #b2adb4;
-  --syntax-base4: #ffb4b5;
-  --syntax-base5: #e6e8ea;
-  --syntax-wheel1: #8fa1c9;
-  --syntax-wheel2: #81e67b;
-  --syntax-wheel3: #ffde6d;
-  --syntax-wheel4: #86aac1;
-  --syntax-wheel5: #f86971;
+  --syntax-base4: #bddcee;
+  --syntax-base5: #e8e8e8;
+  --syntax-wheel1: #e28e93;
+  --syntax-wheel2: #ef9725;
+  --syntax-wheel3: #ffc66d;
+  --syntax-wheel4: #7fb971;
+  --syntax-wheel5: #4dbed4;
   --body-font: "Lato", sans-serif;
   --header-font: "Lato", sans-serif;
   --code-font: "Fira Mono", monospace;
@@ -42,7 +42,7 @@
   --line-height: 1.5;
   --content-width: 860px;
   --nav-width: 275px;
-  --top-bar-height: 50px;
+  --top-bar-height: 35px;
 }
 
 .light-inverted {
