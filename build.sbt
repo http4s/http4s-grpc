@@ -1,6 +1,6 @@
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 
-ThisBuild / tlBaseVersion := "0.0" // your current series x.y
+ThisBuild / tlBaseVersion := "0.1"
 
 ThisBuild / licenses := Seq(License.MIT)
 ThisBuild / developers := List(
