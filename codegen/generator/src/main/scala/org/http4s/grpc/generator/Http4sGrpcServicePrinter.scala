@@ -40,33 +40,36 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
-    val scalaInType = "_root_."+method.inputType.scalaType
-    val scalaOutType = "_root_."+method.outputType.scalaType
+    val scalaInType = "_root_." + method.inputType.scalaType
+    val scalaOutType = "_root_." + method.outputType.scalaType
     val ctx = s"ctx: $Ctx"
 
     s"def ${method.name}" + (method.streamType match {
       case StreamType.Unary => s"(request: $scalaInType, $ctx): F[$scalaOutType]"
-      case StreamType.ClientStreaming => s"(request: $Stream[F, $scalaInType], $ctx): F[$scalaOutType]"
+      case StreamType.ClientStreaming =>
+        s"(request: $Stream[F, $scalaInType], $ctx): F[$scalaOutType]"
       case StreamType.ServerStreaming => s"(request: $scalaInType, $ctx): $Stream[F, $scalaOutType]"
-      case StreamType.Bidirectional => s"(request: $Stream[F, $scalaInType], $ctx): $Stream[F, $scalaOutType]"
+      case StreamType.Bidirectional =>
+        s"(request: $Stream[F, $scalaInType], $ctx): $Stream[F, $scalaOutType]"
     })
   }
 
-  private[this] def handleMethod(method: MethodDescriptor) = {
+  private[this] def handleMethod(method: MethodDescriptor) =
     method.streamType match {
       case StreamType.Unary => "unaryToUnary"
       case StreamType.ClientStreaming => "streamToUnary"
       case StreamType.ServerStreaming => "unaryToStream"
       case StreamType.Bidirectional => "streamToStream"
     }
-  }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
     val encode = s"$Codec.codecForGenerated(_root_.${method.inputType.scalaType})"
     val decode = s"$Codec.codecForGenerated(_root_.${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
     val methodName = method.getName
-    s"""$ClientGrpc.${handleMethod(method)}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
+    s"""$ClientGrpc.${handleMethod(
+        method
+      )}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
   }
 
   private[this] def serviceMethodImplementation(method: MethodDescriptor): PrinterEndo = { p =>
@@ -78,15 +81,17 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   }
 
   private[this] def serviceBindingImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    val serviceCall = s"serviceImpl.${method.name}"
-    val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
+    // val serviceCall = s"serviceImpl.${method.name}"
+    // val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
 
     val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
     val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
     val serviceName = method.getService.getFullName
     val methodName = method.getName
 
-    p.add(s""".combineK($ServerGrpc.${handleMethod(method)}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.${method.name}(_, _)))""")
+    p.add(s""".combineK($ServerGrpc.${handleMethod(
+        method
+      )}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.${method.name}(_, _)))""")
   }
 
   private[this] def serviceMethods: PrinterEndo = _.call(service.methods.map { method =>
@@ -97,8 +102,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     _.call(service.methods.map(serviceMethodImplementation): _*)
 
   private[this] def serviceBindingImplementations: PrinterEndo =
-    _.add(s"$HttpRoutes.empty[F]")
-      .indent
+    _.add(s"$HttpRoutes.empty[F]").indent
       .call(service.methods.map(serviceBindingImplementation): _*)
       .add(s""".combineK($ServerGrpc.methodNotFoundRoute("${service.getFullName()}"))""")
       .outdent
@@ -126,33 +130,30 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .newline
       .add("}")
 
-  private[this] def serviceClient: PrinterEndo = {
+  private[this] def serviceClient: PrinterEndo =
     _.add(
       s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceName[F] = new _root_.$servicePkgName.$serviceName[F] {"
     ).indent
       .call(serviceMethodImplementations)
       .outdent
       .add("}")
-  }
 
-  private[this] def serviceBinding: PrinterEndo = {
+  private[this] def serviceBinding: PrinterEndo =
     _.add(
       s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F]): $HttpRoutes[F] = {"
     ).indent
       .call(serviceBindingImplementations)
       .outdent
       .add("}")
-  }
 
   // /
 
-  def printService(printer: FunctionalPrinter): FunctionalPrinter = {
+  def printService(printer: FunctionalPrinter): FunctionalPrinter =
     printer
       .add(s"package $servicePkgName", "", "import _root_.cats.syntax.all._", "")
       .call(serviceTrait)
       .newline
       .call(serviceObject)
-  }
 }
 
 object Http4sGrpcServicePrinter {

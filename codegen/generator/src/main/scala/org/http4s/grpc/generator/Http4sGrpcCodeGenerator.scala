@@ -33,8 +33,8 @@ object Http4sGrpcCodeGenerator extends CodeGenApp {
 
   def generateServiceFiles(
       file: FileDescriptor,
-      di: DescriptorImplicits
-  ): Seq[PluginProtos.CodeGeneratorResponse.File] = {
+      di: DescriptorImplicits,
+  ): Seq[PluginProtos.CodeGeneratorResponse.File] =
     file.getServices.asScala.map { service =>
       val p = new Http4sGrpcServicePrinter(service, di)
 
@@ -45,30 +45,27 @@ object Http4sGrpcCodeGenerator extends CodeGenApp {
       b.setContent(code)
       b.build
     }.toSeq
-  }
 
-  private def parseParameters(params: String): Either[String, (GeneratorParams)] =
+  private def parseParameters(params: String): Either[String, GeneratorParams] =
     for {
       paramsAndUnparsed <- GeneratorParams.fromStringCollectUnrecognized(params)
       params = paramsAndUnparsed._1
-      unparsed = paramsAndUnparsed._2
+      // unparsed = paramsAndUnparsed._2
     } yield params
 
-  def process(request: CodeGenRequest): CodeGenResponse = {
+  def process(request: CodeGenRequest): CodeGenResponse =
     parseParameters(request.parameter) match {
       case Right(params) =>
         val implicits = DescriptorImplicits.fromCodeGenRequest(params, request)
         val srvFiles = request.filesToGenerate.flatMap(generateServiceFiles(_, implicits))
         CodeGenResponse.succeed(
           srvFiles,
-          Set(PluginProtos.CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL)
+          Set(PluginProtos.CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL),
         )
       case Left(error) =>
         CodeGenResponse.fail(error)
     }
-  }
 
-  override def registerExtensions(registry: ExtensionRegistry): Unit = {
+  override def registerExtensions(registry: ExtensionRegistry): Unit =
     Scalapb.registerAllExtensions(registry)
-  }
 }
