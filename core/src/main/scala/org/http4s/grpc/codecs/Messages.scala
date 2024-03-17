@@ -40,7 +40,7 @@ object Messages {
   )(s: Stream[F, A]): Stream[F, LengthPrefixedMessage] =
     s
       .evalMap(a => liftAttempt(e.encode(a)))
-      .map(b => LengthPrefixedMessage(false, b.bytes))
+      .map(b => LengthPrefixedMessage(compressed = false, b.bytes))
 
   private def encodeLPMStream[F[_]: RaiseThrowable](
       s: Stream[F, LengthPrefixedMessage]
