@@ -11,10 +11,10 @@ ThisBuild / tlSonatypeUseLegacyHost := false
 
 ThisBuild / tlMimaPreviousVersions := Set()
 
-val Scala212 = "2.12.18"
+val Scala212 = "2.12.19"
 val Scala213 = "2.13.13"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.1")
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.3")
 ThisBuild / scalaVersion := Scala213
 
 // disable sbt-header plugin until we are not aligned on the license
