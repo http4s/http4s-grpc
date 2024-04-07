@@ -6,8 +6,8 @@ import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.client.Client
-import org.http4s.h2.H2Keys
 import org.http4s.grpc.codecs.NamedHeaders
+import org.http4s.h2.H2Keys
 import scodec.Decoder
 import scodec.Encoder
 
