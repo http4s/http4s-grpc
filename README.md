@@ -1,4 +1,6 @@
 # http4s-grpc
+![Maven Central](https://img.shields.io/maven-central/v/org.http4s/http4s-grcp_2.13?style=flat)
+
 
 A pure Scala [gRPC] implementation! Use it with [http4s Ember] and deploy on JVM, Node.js, and Native.
 
@@ -13,7 +15,7 @@ The generated APIs use Cats Effect and FS2, and are nearly drop-in replacements 
 First add the plugin to `project/plugins.sbt`.
 
 ```scala
-addSbtPlugin("io.chrisdavenport" % "sbt-http4s-grpc" % "0.0.1")
+addSbtPlugin("org.http4s" % "sbt-http4s-grpc" % "VERSION_FROM_BADGE")
 ```
 
 Then in your `build.sbt` enable the `Http4sGrpcPlugin` to configure the http4s-grpc codegen. In addition, you will need to configure the [ScalaPB] codegen by following their [installation docs][ScalaPB installation].
