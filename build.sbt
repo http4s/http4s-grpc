@@ -30,9 +30,6 @@ val http4sV = "0.23.27"
 val munitCatsEffectV = "2.0.0-M5"
 import scalapb.compiler.Version.scalapbVersion
 
-ThisBuild / resolvers ++=
-  Resolver.sonatypeOssRepos("snapshots")
-
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
   .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
