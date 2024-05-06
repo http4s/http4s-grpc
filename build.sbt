@@ -26,9 +26,12 @@ ThisBuild / tlCiDependencyGraphJob := false
 val catsV = "2.10.0"
 val catsEffectV = "3.5.4"
 val fs2V = "3.9.2"
-val http4sV = "0.23.26"
+val http4sV = "0.23.27"
 val munitCatsEffectV = "2.0.0-M5"
 import scalapb.compiler.Version.scalapbVersion
+
+ThisBuild / resolvers ++=
+  Resolver.sonatypeOssRepos("snapshots")
 
 // Projects
 lazy val `http4s-grpc` = tlCrossRootProject
@@ -50,8 +53,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "co.fs2" %%% "fs2-io" % fs2V,
       "co.fs2" %%% "fs2-scodec" % fs2V,
       "org.http4s" %%% "http4s-dsl" % http4sV,
-      "org.http4s" %%% "http4s-ember-server" % http4sV,
-      "org.http4s" %%% "http4s-ember-client" % http4sV,
+      "org.http4s" %%% "http4s-client" % http4sV,
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion,
     ),
