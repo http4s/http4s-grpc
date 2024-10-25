@@ -4,8 +4,8 @@ import cats.parse.Parser
 import cats.syntax.all._
 import org.http4s.Header
 import org.http4s.ParseResult
-import org.http4s.grpc.GrpcStatus.fromCodeValue
 import org.http4s.grpc.GrpcStatus.Code
+import org.http4s.grpc.GrpcStatus.fromCodeValue
 import org.http4s.internal.parsing.CommonRules.ows
 import org.http4s.parser.AdditionalRules
 import org.typelevel.ci.CIString
