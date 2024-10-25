@@ -41,14 +41,7 @@ object ServerGrpc {
           .evalMap(f(_, req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.set((c, m))
-            case Resource.ExitCase.Errored(_: TimeoutException) =>
-              status.set((DeadlineExceeded, None))
-            case Resource.ExitCase.Errored(e) => status.set((Unknown, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((Cancelled, None))
-            case _ => ().pure[F]
-          }
+          .onFinalizeCase(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -86,14 +79,7 @@ object ServerGrpc {
           .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.set((c, m))
-            case Resource.ExitCase.Errored(_: TimeoutException) =>
-              status.set((DeadlineExceeded, None))
-            case Resource.ExitCase.Errored(e) => status.set((Unknown, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((Cancelled, None))
-            case _ => ().pure[F]
-          }
+          .onFinalizeCase(updateStatus(status))
           .mask // ensures body closure without rst-stream
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -130,14 +116,7 @@ object ServerGrpc {
           .eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.set((c, m))
-            case Resource.ExitCase.Errored(_: TimeoutException) =>
-              status.set((DeadlineExceeded, None))
-            case Resource.ExitCase.Errored(e) => status.set((Unknown, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((Cancelled, None))
-            case _ => ().pure[F]
-          }
+          .onFinalizeCase(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -174,14 +153,7 @@ object ServerGrpc {
         val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.set((c, m))
-            case Resource.ExitCase.Errored(_: TimeoutException) =>
-              status.set((DeadlineExceeded, None))
-            case Resource.ExitCase.Errored(e) => status.set((Unknown, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((Cancelled, None))
-            case _ => ().pure[F]
-          }
+          .onFinalizeCase(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -245,5 +217,16 @@ object ServerGrpc {
       case None => s
       case Some(value) => s.timeout(value)
     }
+
+  private def updateStatus[F[_]: Concurrent](
+      status: Ref[F, (Code, Option[String])]
+  ): Resource.ExitCase => F[Unit] = {
+    case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.set((c, m))
+    case Resource.ExitCase.Errored(_: TimeoutException) =>
+      status.set((DeadlineExceeded, None))
+    case Resource.ExitCase.Errored(e) => status.set((Unknown, e.toString().some))
+    case Resource.ExitCase.Canceled => status.set((Cancelled, None))
+    case _ => ().pure[F]
+  }
 
 }
