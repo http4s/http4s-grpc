@@ -42,10 +42,6 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
-  implicit val arbitraryStatusCode: Arbitrary[Code] = Arbitrary(
-    Gen.oneOf(codeValues.filter(_ != Ok))
-  )
-
   val client: TestService[IO] = TestService.fromClient[IO](
     Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
     Uri(),
@@ -148,6 +144,10 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   }
 
   test("Server Fails with an Status Code") {
+
+    implicit val arbitraryStatusCode: Arbitrary[Code] = Arbitrary(
+      Gen.oneOf(codeValues.filter(_ != Ok))
+    )
 
     forAllF { (msg: TestMessage, statusCode: Code) =>
       val ts = new TestService[IO] {
