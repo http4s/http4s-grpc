@@ -1,6 +1,5 @@
 package org.http4s.grpc
 
-import cats.Applicative
 import cats.Monad
 import cats.effect._
 import cats.syntax.all._
