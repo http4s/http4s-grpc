@@ -73,7 +73,8 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   test("Routes returns 405 Method Not Allowed with Allow header on GET requests") {
     val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
-    implicit val methodExceptPost = Arbitrary(Gen.oneOf(Method.all.filterNot(_ === Method.POST)))
+    implicit val methodExceptPost: Arbitrary[Method] =
+      Arbitrary(Gen.oneOf(Method.all.filterNot(_ === Method.POST)))
     forAllF { (meth: Method) =>
       client
         .run(
