@@ -75,11 +75,18 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
     implicit val methodExceptPost: Arbitrary[Method] =
       Arbitrary(Gen.oneOf(Method.all.filterNot(_ === Method.POST)))
-    forAllF { (meth: Method) =>
+    implicit val wellKnownGRPCHeaders: Arbitrary[Header.ToRaw] = Arbitrary(
+      Gen.oneOf(
+        "Content-Type" -> "application/grpc",
+        "Content-Type" -> "application/grpc+proto",
+        "Content-Type" -> "application/grpc+json",
+      )
+    )
+    forAllF { (meth: Method, grpcHeader: Header.ToRaw) =>
       client
         .run(
           Request[IO](meth, uri"/hello.world.TestService/any/url")
-            .withHeaders("Content-Type" -> "application/grpc")
+            .withHeaders(grpcHeader)
         )
         .use { resp =>
           val headers = resp.headers
