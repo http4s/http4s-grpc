@@ -39,7 +39,7 @@ object ServerGrpc {
           .evalMap(f(_, req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
+          .onFinalizeCaseWeak {
             case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
             case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
             case Resource.ExitCase.Canceled => status.complete((1, None)).void
@@ -82,7 +82,7 @@ object ServerGrpc {
           .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
+          .onFinalizeCaseWeak {
             case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
             case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
             case Resource.ExitCase.Canceled => status.complete((1, None)).void
@@ -124,7 +124,7 @@ object ServerGrpc {
           .eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
+          .onFinalizeCaseWeak {
             case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
             case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
             case Resource.ExitCase.Canceled => status.complete((1, None)).void
@@ -166,7 +166,7 @@ object ServerGrpc {
         val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
+          .onFinalizeCaseWeak {
             case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
             case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
             case Resource.ExitCase.Canceled => status.complete((1, None)).void
