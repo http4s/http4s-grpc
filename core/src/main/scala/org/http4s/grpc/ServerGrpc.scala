@@ -18,7 +18,7 @@ import scala.concurrent.duration._
 
 object ServerGrpc {
   def precondition[F[_]: Monad]: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req if req.method =!= Method.POST =>
+    case req if req.method != Method.POST =>
       Response(Status.MethodNotAllowed).withHeaders(Allow(Method.POST)).pure[F]
     case req if !hasGRPCContentType(req) =>
       Response[F](Status.UnsupportedMediaType).pure[F]
