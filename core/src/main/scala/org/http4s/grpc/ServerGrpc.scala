@@ -1,11 +1,13 @@
 package org.http4s.grpc
 
+import cats.Monad
 import cats.effect._
 import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.dsl.request._
 import org.http4s.grpc.codecs.NamedHeaders
+import org.http4s.headers.Allow
 import org.http4s.headers.Trailer
 import org.typelevel.ci._
 import scodec.Decoder
@@ -15,6 +17,16 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 object ServerGrpc {
+  def precondition[F[_]: Monad]: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req if req.method != Method.POST =>
+      Response(Status.MethodNotAllowed).withHeaders(Allow(Method.POST)).pure[F]
+    case req if !hasGRPCContentType(req) =>
+      Response[F](Status.UnsupportedMediaType).pure[F]
+  }
+
+  private def hasGRPCContentType[F[_]](req: Request[F]): Boolean = req.headers
+    .get(CIString("Content-Type"))
+    .exists(_.exists(_.value.startsWith("application/grpc")))
 
   def unaryToUnary[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
