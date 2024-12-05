@@ -32,6 +32,14 @@ object Messages {
     s.through(encodeLPMThroughEncoder[F, A](e))
       .through(encodeLPMStream[F])
 
+  def encodeToChunk[F[_]: MonadThrow, A](e: scodec.Encoder[A])(a: A): F[Chunk[Byte]] =
+    liftAttempt(
+      e.encode(a)
+        .map(b => LengthPrefixedMessage(compressed = false, b.bytes))
+        .flatMap(msg => LengthPrefixedMessage.codec.encode(msg))
+        .map(bv => Chunk.byteVector(bv.bytes))
+    )
+
   def encodeSingle[F[_]: MonadThrow, A](e: scodec.Encoder[A])(a: A): Stream[F, Byte] =
     encode(e)(Stream(a).covary[F])
 
