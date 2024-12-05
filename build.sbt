@@ -24,9 +24,9 @@ ThisBuild / headerCheckAll := Nil
 ThisBuild / tlCiDependencyGraphJob := false
 
 val catsV = "2.11.0"
-val catsEffectV = "3.5.4"
+val catsEffectV = "3.5.7"
 val fs2V = "3.9.2"
-val http4sV = "0.23.28"
+val http4sV = "0.23.30"
 val munitCatsEffectV = "2.0.0"
 import scalapb.compiler.Version.scalapbVersion
 

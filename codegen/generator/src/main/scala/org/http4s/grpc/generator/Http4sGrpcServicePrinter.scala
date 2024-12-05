@@ -21,10 +21,13 @@
 
 package org.http4s.grpc.generator
 
-import com.google.protobuf.Descriptors.{MethodDescriptor, ServiceDescriptor}
+import com.google.protobuf.Descriptors.MethodDescriptor
+import com.google.protobuf.Descriptors.ServiceDescriptor
+import scalapb.compiler.DescriptorImplicits
+import scalapb.compiler.FunctionalPrinter
 import scalapb.compiler.FunctionalPrinter.PrinterEndo
-import scalapb.compiler.{DescriptorImplicits, FunctionalPrinter, StreamType}
 import scalapb.compiler.ProtobufGenerator.asScalaDocBlock
+import scalapb.compiler.StreamType
 
 class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplicits) {
   import di._
@@ -102,7 +105,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     _.call(service.methods.map(serviceMethodImplementation): _*)
 
   private[this] def serviceBindingImplementations: PrinterEndo =
-    _.add(s"$HttpRoutes.empty[F]").indent
+    _.add(s"$ServerGrpc.precondition[F]").indent
       .call(service.methods.map(serviceBindingImplementation): _*)
       .add(s""".combineK($ServerGrpc.methodNotFoundRoute("${service.getFullName()}"))""")
       .outdent
