@@ -6,6 +6,8 @@ import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.dsl.request._
+import org.http4s.grpc.GrpcExceptions.StatusRuntimeException
+import org.http4s.grpc.GrpcStatus._
 import org.http4s.grpc.codecs.NamedHeaders
 import org.http4s.headers.Allow
 import org.http4s.headers.Trailer
@@ -38,7 +40,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Int, Option[String])]
+        status <- Deferred[F, (Code, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -51,12 +53,7 @@ object ServerGrpc {
           .evalMap(f(_, req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCaseWeak {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
-            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
-            case Resource.ExitCase.Canceled => status.complete((1, None)).void
-            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
-          }
+          .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -81,7 +78,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Int, Option[String])]
+        status <- Deferred[F, (Code, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -94,12 +91,7 @@ object ServerGrpc {
           .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCaseWeak {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
-            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
-            case Resource.ExitCase.Canceled => status.complete((1, None)).void
-            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
-          }
+          .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
           .putHeaders(
@@ -123,7 +115,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Int, Option[String])]
+        status <- Deferred[F, (Code, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -136,12 +128,7 @@ object ServerGrpc {
           .eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCaseWeak {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
-            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
-            case Resource.ExitCase.Canceled => status.complete((1, None)).void
-            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
-          }
+          .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -166,7 +153,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Int, Option[String])]
+        status <- Deferred[F, (Code, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -178,12 +165,7 @@ object ServerGrpc {
         val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCaseWeak {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
-            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
-            case Resource.ExitCase.Canceled => status.complete((1, None)).void
-            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
-          }
+          .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -204,7 +186,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(12),
+          NamedHeaders.GrpcStatus(Unimplemented),
           "grpc-message" -> s"unknown method $mN for service $sN",
         )
         .pure[F]
@@ -216,7 +198,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(12),
+          NamedHeaders.GrpcStatus(Unimplemented),
           "grpc-message" -> s"unknown service $sN",
         )
         .pure[F]
@@ -225,7 +207,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(12),
+          NamedHeaders.GrpcStatus(Unimplemented),
           "grpc-message" -> s"unknown method $other",
         )
         .pure[F]
@@ -234,7 +216,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(12),
+          NamedHeaders.GrpcStatus(Unimplemented),
           "grpc-message" -> s"unknown request",
         )
         .pure[F]
@@ -248,4 +230,14 @@ object ServerGrpc {
       case Some(value) => s.timeout(value)
     }
 
+  private def updateStatus[F[_]: Concurrent](
+      status: Deferred[F, (Code, Option[String])]
+  ): Resource.ExitCase => F[Unit] = {
+    case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.complete((c, m)).void
+    case Resource.ExitCase.Errored(_: TimeoutException) =>
+      status.complete((DeadlineExceeded, None)).void
+    case Resource.ExitCase.Errored(e) => status.complete((Unknown, e.toString().some)).void
+    case Resource.ExitCase.Canceled => status.complete((Cancelled, None)).void
+    case Resource.ExitCase.Succeeded => status.complete((Ok, None)).void
+  }
 }
