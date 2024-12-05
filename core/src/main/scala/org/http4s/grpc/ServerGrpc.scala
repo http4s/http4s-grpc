@@ -1,11 +1,13 @@
 package org.http4s.grpc
 
+import cats.Monad
 import cats.effect._
 import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.dsl.request._
 import org.http4s.grpc.codecs.NamedHeaders
+import org.http4s.headers.Allow
 import org.http4s.headers.Trailer
 import org.typelevel.ci._
 import scodec.Decoder
@@ -15,6 +17,16 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 object ServerGrpc {
+  def precondition[F[_]: Monad]: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req if req.method != Method.POST =>
+      Response(Status.MethodNotAllowed).withHeaders(Allow(Method.POST)).pure[F]
+    case req if !hasGRPCContentType(req) =>
+      Response[F](Status.UnsupportedMediaType).pure[F]
+  }
+
+  private def hasGRPCContentType[F[_]](req: Request[F]): Boolean = req.headers
+    .get(CIString("Content-Type"))
+    .exists(_.exists(_.value.startsWith("application/grpc")))
 
   def unaryToUnary[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
@@ -26,7 +38,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        status <- Deferred[F, (Int, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -39,11 +51,11 @@ object ServerGrpc {
           .evalMap(f(_, req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((1, None))
-            case _ => ().pure[F]
+          .onFinalizeCaseWeak {
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
+            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
+            case Resource.ExitCase.Canceled => status.complete((1, None)).void
+            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
           }
           .mask // ensures body closure without rst-stream
 
@@ -69,7 +81,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        status <- Deferred[F, (Int, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -82,11 +94,11 @@ object ServerGrpc {
           .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((1, None))
-            case _ => ().pure[F]
+          .onFinalizeCaseWeak {
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
+            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
+            case Resource.ExitCase.Canceled => status.complete((1, None)).void
+            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
           }
           .mask // ensures body closure without rst-stream
         Response[F](Status.Ok, HttpVersion.`HTTP/2`)
@@ -111,7 +123,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        status <- Deferred[F, (Int, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -124,11 +136,11 @@ object ServerGrpc {
           .eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((1, None))
-            case _ => ().pure[F]
+          .onFinalizeCaseWeak {
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
+            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
+            case Resource.ExitCase.Canceled => status.complete((1, None)).void
+            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
           }
           .mask // ensures body closure without rst-stream
 
@@ -154,7 +166,7 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Ref.of[F, (Int, Option[String])]((0, Option.empty))
+        status <- Deferred[F, (Int, Option[String])]
         trailers = status.get.map { case (i, message) =>
           Headers(
             NamedHeaders.GrpcStatus(i)
@@ -166,11 +178,11 @@ object ServerGrpc {
         val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
-          .onFinalizeCase {
-            case Resource.ExitCase.Errored(_: TimeoutException) => status.set((4, None))
-            case Resource.ExitCase.Errored(e) => status.set((2, e.toString().some))
-            case Resource.ExitCase.Canceled => status.set((1, None))
-            case _ => ().pure[F]
+          .onFinalizeCaseWeak {
+            case Resource.ExitCase.Errored(_: TimeoutException) => status.complete((4, None)).void
+            case Resource.ExitCase.Errored(e) => status.complete((2, e.toString().some)).void
+            case Resource.ExitCase.Canceled => status.complete((1, None)).void
+            case Resource.ExitCase.Succeeded => status.complete((0, None)).void
           }
           .mask // ensures body closure without rst-stream
 

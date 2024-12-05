@@ -4,8 +4,7 @@ import cats.effect.IO
 import cats.syntax.all._
 import fs2.Stream
 import munit._
-import org.http4s.Headers
-import org.http4s.Uri
+import org.http4s._
 import org.http4s.client.Client
 import org.http4s.syntax.all._
 import org.scalacheck._
@@ -72,11 +71,55 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     }
   }
 
-  test("Routes returns missing method") {
+  test("Routes returns 405 Method Not Allowed with Allow header on GET requests") {
+    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
+    implicit val methodExceptPost: Arbitrary[Method] =
+      Arbitrary(Gen.oneOf(Method.all.filterNot(_ === Method.POST)))
+    implicit val wellKnownGRPCHeaders: Arbitrary[Header.ToRaw] = Arbitrary(
+      Gen.oneOf(
+        "Content-Type" -> "application/grpc",
+        "Content-Type" -> "application/grpc+proto",
+        "Content-Type" -> "application/grpc+json",
+      )
+    )
+    forAllF { (meth: Method, grpcHeader: Header.ToRaw) =>
+      client
+        .run(
+          Request[IO](meth, uri"/hello.world.TestService/any/url")
+            .withHeaders(grpcHeader)
+        )
+        .use { resp =>
+          val headers = resp.headers
+          val methods = headers.get[org.http4s.headers.Allow].map(_.methods)
+          (resp.status, methods).pure[IO]
+        }
+        .assertEquals(
+          (Status.MethodNotAllowed, Some(Set(Method.POST)))
+        )
+    }
+  }
+
+  test("Routes returns 415 Unsupported Media Type on requests without grpc content type") {
     val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
     client
       .run(
-        org.http4s.Request[IO](org.http4s.Method.POST, uri"/hello.world.TestService/missingMethod")
+        Request[IO](Method.POST, uri"/hello.world.TestService/noStreaming")
+      )
+      .use { resp =>
+        val status = resp.status
+        status.pure[IO]
+      }
+      .assertEquals(
+        Status.UnsupportedMediaType
+      )
+  }
+
+  test("Routes returns UNIMPLEMENTED") {
+    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
+    client
+      .run(
+        Request[IO](org.http4s.Method.POST, uri"/hello.world.TestService/missingMethod")
+          .withHeaders("Content-Type" -> "application/grpc")
       )
       .use { resp =>
         val headers = resp.headers
@@ -91,8 +134,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   test("Client fails with initial failure") {
     forAllF { (msg: TestMessage) =>
       val route = org.http4s.HttpRoutes.of[IO] { case _ =>
-        org.http4s
-          .Response(org.http4s.Status.Ok)
+        Response(Status.Ok)
           .putHeaders(
             org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(12)
           )
