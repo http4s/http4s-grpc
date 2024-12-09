@@ -6,6 +6,7 @@ import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.client.Client
+import org.http4s.grpc.GrpcStatus._
 import org.http4s.grpc.codecs.NamedHeaders
 import org.http4s.h2.H2Keys
 import scodec.Decoder
@@ -177,7 +178,7 @@ object ClientGrpc {
     val reason = headers.get[NamedHeaders.GrpcMessage]
 
     status match {
-      case Some(NamedHeaders.GrpcStatus(0)) => ().pure[F]
+      case Some(NamedHeaders.GrpcStatus(Ok)) => ().pure[F]
       case Some(NamedHeaders.GrpcStatus(status)) =>
         GrpcExceptions.StatusRuntimeException(status, reason.map(_.message)).raiseError[F, Unit]
       case None => ().pure[F]
