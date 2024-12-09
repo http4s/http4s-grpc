@@ -5,5 +5,7 @@ object GrpcExceptions {
       extends RuntimeException({
         val me = message.fold("")((m: String) => s", Message-${m}")
         s"Grpc Failed: Status-${status.value}${me}"
-      })
+      }) {
+    assert(status != GrpcStatus.Ok)
+  }
 }
