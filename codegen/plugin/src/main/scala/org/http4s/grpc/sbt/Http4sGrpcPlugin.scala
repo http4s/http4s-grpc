@@ -44,7 +44,7 @@ object Http4sGrpcPlugin extends AutoPlugin {
     List(
       Compile / http4sGrpcOutputPath := (Compile / sourceManaged).value / "http4s-grpc",
       Compile / http4sGrpcScalaPBOptions := Seq.empty,
-      Compile / PB.targets += {
+      Compile / PB.targets +=
         Target(
           SandboxedJvmGenerator.forModule(
             "scala-http4s-grpc",
@@ -58,8 +58,7 @@ object Http4sGrpcPlugin extends AutoPlugin {
           ),
           (Compile / http4sGrpcOutputPath).value,
           (Compile / http4sGrpcScalaPBOptions).value,
-        )
-      },
+        ),
       libraryDependencies ++= Seq(
         BuildInfo.organization %%% BuildInfo.coreModule % BuildInfo.version
       ),
