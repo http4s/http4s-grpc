@@ -7,8 +7,6 @@ ThisBuild / developers := List(
   tlGitHubDev("christopherdavenport", "Christopher Davenport")
 )
 ThisBuild / tlCiReleaseBranches := Seq("main")
-ThisBuild / tlSonatypeUseLegacyHost := false
-
 ThisBuild / tlMimaPreviousVersions := Set()
 
 val Scala212 = "2.12.20"
@@ -38,7 +36,7 @@ lazy val `http4s-grpc` = tlCrossRootProject
   )
   .disablePlugins(HeaderPlugin)
 
-lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+lazy val core = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
   .in(file("core"))
   .settings(
@@ -102,7 +100,7 @@ lazy val codeGeneratorPlugin = project
   )
   .disablePlugins(HeaderPlugin, ScalafixPlugin)
 
-lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
   .in(file("codegen/testing"))
   .enablePlugins(LocalCodeGenPlugin, BuildInfoPlugin, NoPublishPlugin)
