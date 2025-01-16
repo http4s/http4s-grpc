@@ -1,2 +1,5 @@
 # #97 Introduce sbt-http4s-org plugin
 b92d1dbfcc29d3afcca0d2c143528f07b949dcd3
+
+# Scala Steward: Reformat with scalafmt 3.8.4
+249ecb53ddeb3bca3a4ba5489ef32877f6299dfb
