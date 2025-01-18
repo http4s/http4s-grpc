@@ -21,7 +21,7 @@ ThisBuild / headerCheckAll := Nil
 // temporarily disable dependency submissions in CI
 ThisBuild / tlCiDependencyGraphJob := false
 
-val catsV = "2.11.0"
+val catsV = "2.12.0"
 val catsEffectV = "3.5.7"
 val fs2V = "3.9.2"
 val http4sV = "0.23.30"
