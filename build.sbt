@@ -12,7 +12,7 @@ ThisBuild / tlMimaPreviousVersions := Set()
 val Scala212 = "2.12.20"
 val Scala213 = "2.13.16"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.4")
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.5")
 ThisBuild / scalaVersion := Scala213
 
 // disable sbt-header plugin until we are not aligned on the license
