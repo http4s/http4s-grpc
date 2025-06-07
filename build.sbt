@@ -94,7 +94,7 @@ lazy val codeGeneratorPlugin = project
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
     ),
-    addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7"),
+    addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.8"),
     addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.2"),
     unusedCompileDependenciesFilter -= moduleFilter(),
   )
