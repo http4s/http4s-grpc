@@ -12,7 +12,7 @@ ThisBuild / tlMimaPreviousVersions := Set()
 val Scala212 = "2.12.20"
 val Scala213 = "2.13.17"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.6")
+ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.7")
 ThisBuild / scalaVersion := Scala213
 
 // disable sbt-header plugin until we are not aligned on the license
@@ -24,7 +24,7 @@ ThisBuild / tlCiDependencyGraphJob := false
 val catsV = "2.13.0"
 val catsEffectV = "3.6.3"
 val fs2V = "3.9.2"
-val http4sV = "0.23.32"
+val http4sV = "0.23.33"
 val munitCatsEffectV = "2.1.0"
 import scalapb.compiler.Version.scalapbVersion
 
