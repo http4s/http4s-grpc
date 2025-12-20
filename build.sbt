@@ -9,7 +9,7 @@ ThisBuild / developers := List(
 ThisBuild / tlCiReleaseBranches := Seq("main")
 ThisBuild / tlMimaPreviousVersions := Set()
 
-val Scala212 = "2.12.20"
+val Scala212 = "2.12.21"
 val Scala213 = "2.13.18"
 
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.7")
