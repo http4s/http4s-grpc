@@ -1,6 +1,6 @@
 # http4s-grpc
-![Maven Central](https://img.shields.io/maven-central/v/org.http4s/http4s-grcp_2.13?style=flat)
 
+![Maven Central](https://img.shields.io/maven-central/v/org.http4s/http4s-grpc_2.13?style=flat)
 
 A pure Scala [gRPC] implementation! Use it with [http4s Ember] or any other applicable Backend and deploy on JVM, Node.js, and Native.
 
