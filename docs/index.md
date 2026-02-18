@@ -13,7 +13,7 @@ The generated APIs use Cats Effect and FS2, and are nearly drop-in replacements 
 First add the plugin to `project/plugins.sbt`.
 
 ```scala
-addSbtPlugin("io.chrisdavenport" % "sbt-http4s-grpc" % "@VERSION@")
+addSbtPlugin("org.http4s" % "sbt-http4s-grpc" % "@VERSION@")
 ```
 
 Then in your `build.sbt` enable the `Http4sGrpcPlugin` to configure the http4s-grpc codegen. In addition, you will need to configure the [ScalaPB] codegen by following their [installation docs][ScalaPB installation].
