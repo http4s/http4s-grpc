@@ -26,6 +26,7 @@ val catsEffectV = "3.6.3"
 val fs2V = "3.12.2"
 val http4sV = "0.23.33"
 val munitCatsEffectV = "2.1.0"
+val scalaCheckEffectMunitV = "2.1.0-RC1"
 import scalapb.compiler.Version.scalapbVersion
 
 // Projects
@@ -116,7 +117,7 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion % "protobuf",
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectV % Test,
-      "org.typelevel" %%% "scalacheck-effect-munit" % "2.0.0-M2" % Test,
+      "org.typelevel" %%% "scalacheck-effect-munit" % scalaCheckEffectMunitV % Test,
     ),
     buildInfoPackage := "org.http4s.grpc.e2e.buildinfo",
     buildInfoKeys := Seq[BuildInfoKey](
