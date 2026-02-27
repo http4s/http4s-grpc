@@ -21,69 +21,147 @@
 
 package org.http4s.grpc
 
-import GrpcExceptions.StatusRuntimeException
+import scalapb.GeneratedMessage
+
+sealed abstract class GrpcStatus extends Product with Serializable {
+  def code: GrpcStatusCode
+
+  def withCode(code: GrpcStatusCode): GrpcStatus
+
+  def message: Option[String]
+
+  def withMessage(message: String): GrpcStatus
+
+  def withMessageOption(message: Option[String]): GrpcStatus
+
+  def withoutMessage: GrpcStatus
+
+  def details: Option[GrpcStatusDetails]
+
+  def addDetails[A <: GeneratedMessage](details: A): GrpcStatus
+
+  def addAllDetails(details: PbAny*): GrpcStatus
+
+  def withDetails(details: GrpcStatusDetails): GrpcStatus
+
+  def withDetailsOption(details: Option[GrpcStatusDetails]): GrpcStatus
+
+  def withoutDetails: GrpcStatus
+
+  def toException: GrpcStatusException
+}
 
 object GrpcStatus {
+  def apply(
+      code: GrpcStatusCode
+  ): GrpcStatus =
+    apply(code, message = None)
 
-  sealed abstract class Code(val value: Int) extends Product with Serializable {
-    def asStatusRuntimeException(message: Option[String] = None): StatusRuntimeException =
-      StatusRuntimeException(this, message)
+  def apply(
+      code: GrpcStatusCode,
+      message: Option[String],
+  ): GrpcStatus =
+    apply(code, message, details = None)
+
+  def apply(
+      code: GrpcStatusCode,
+      message: Option[String],
+      details: Option[GrpcStatusDetails],
+  ): GrpcStatus =
+    GrpcStatusImpl(code, message, details)
+
+  private final case class GrpcStatusImpl(
+      override val code: GrpcStatusCode,
+      override val message: Option[String],
+      override val details: Option[GrpcStatusDetails],
+  ) extends GrpcStatus {
+    override def withCode(code: GrpcStatusCode): GrpcStatus =
+      copy(code = code, details = details.map(_.withCode(code)))
+
+    override def withMessage(message: String): GrpcStatus =
+      withMessageOption(Some(message))
+
+    override def withMessageOption(message: Option[String]): GrpcStatus =
+      copy(message = message, details = details.map(_.withMessage(message.getOrElse(""))))
+
+    override def withoutMessage: GrpcStatus =
+      withMessageOption(None)
+
+    override def addDetails[A <: GeneratedMessage](details: A): GrpcStatus =
+      addAllDetails(PbAny.pack(details))
+
+    override def addAllDetails(details: PbAny*): GrpcStatus =
+      if (details.isEmpty) this
+      else
+        withDetails(this.details match {
+          case Some(existing) => existing.addAllDetails(details: _*)
+          case None => GrpcStatusDetails(code, message.getOrElse(""), details.toList)
+        })
+
+    override def withDetails(details: GrpcStatusDetails): GrpcStatus =
+      withDetailsOption(Some(details))
+
+    override def withDetailsOption(details: Option[GrpcStatusDetails]): GrpcStatus =
+      copy(details = details)
+
+    override def withoutDetails: GrpcStatus =
+      withDetailsOption(None)
+
+    override def toException: GrpcStatusException =
+      GrpcStatusException(this)
+
+    override def toString: String =
+      s"GrpcStatus($code, $message, $details)"
   }
 
-  case object Ok extends Code(0)
+  val Ok: GrpcStatus =
+    apply(GrpcStatusCode.Ok)
 
-  case object Cancelled extends Code(1)
+  val Cancelled: GrpcStatus =
+    apply(GrpcStatusCode.Cancelled)
 
-  case object Unknown extends Code(2)
+  val Unknown: GrpcStatus =
+    apply(GrpcStatusCode.Unknown)
 
-  case object InvalidArgument extends Code(3)
+  val InvalidArgument: GrpcStatus =
+    apply(GrpcStatusCode.InvalidArgument)
 
-  case object DeadlineExceeded extends Code(4)
+  val DeadlineExceeded: GrpcStatus =
+    apply(GrpcStatusCode.DeadlineExceeded)
 
-  case object NotFound extends Code(5)
+  val NotFound: GrpcStatus =
+    apply(GrpcStatusCode.NotFound)
 
-  case object AlreadyExists extends Code(6)
+  val AlreadyExists: GrpcStatus =
+    apply(GrpcStatusCode.AlreadyExists)
 
-  case object PermissionDenied extends Code(7)
+  val PermissionDenied: GrpcStatus =
+    apply(GrpcStatusCode.PermissionDenied)
 
-  case object ResourceExhausted extends Code(8)
+  val ResourceExhausted: GrpcStatus =
+    apply(GrpcStatusCode.ResourceExhausted)
 
-  case object FailedPrecondition extends Code(9)
+  val FailedPrecondition: GrpcStatus =
+    apply(GrpcStatusCode.FailedPrecondition)
 
-  case object Aborted extends Code(10)
+  val Aborted: GrpcStatus =
+    apply(GrpcStatusCode.Aborted)
 
-  case object OutOfRange extends Code(11)
+  val OutOfRange: GrpcStatus =
+    apply(GrpcStatusCode.OutOfRange)
 
-  case object Unimplemented extends Code(12)
+  val Unimplemented: GrpcStatus =
+    apply(GrpcStatusCode.Unimplemented)
 
-  case object Internal extends Code(13)
+  val Internal: GrpcStatus =
+    apply(GrpcStatusCode.Internal)
 
-  case object Unavailable extends Code(14)
+  val Unavailable: GrpcStatus =
+    apply(GrpcStatusCode.Unavailable)
 
-  case object DataLoss extends Code(15)
+  val DataLoss: GrpcStatus =
+    apply(GrpcStatusCode.DataLoss)
 
-  case object Unauthenticated extends Code(16)
-
-  def fromCodeValue(value: Int): Option[Code] = codeValues.find(_.value == value)
-
-  val codeValues: List[Code] = List(
-    Ok,
-    Cancelled,
-    Unknown,
-    InvalidArgument,
-    DeadlineExceeded,
-    NotFound,
-    AlreadyExists,
-    PermissionDenied,
-    ResourceExhausted,
-    FailedPrecondition,
-    Aborted,
-    OutOfRange,
-    Unimplemented,
-    Internal,
-    Unavailable,
-    DataLoss,
-    Unauthenticated,
-  )
-
+  val Unauthenticated: GrpcStatus =
+    apply(GrpcStatusCode.Unauthenticated)
 }

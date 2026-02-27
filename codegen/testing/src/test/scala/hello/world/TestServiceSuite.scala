@@ -27,15 +27,16 @@ import fs2.Stream
 import munit._
 import org.http4s._
 import org.http4s.client.Client
+import org.http4s.grpc.GrpcStatus
 import org.http4s.grpc.GrpcStatus._
+import org.http4s.grpc.GrpcStatusCode
+import org.http4s.grpc.GrpcStatusException
 import org.http4s.syntax.all._
+import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck._
 import org.scalacheck.effect.PropF.forAllF
 
-import Arbitrary.arbitrary
-
 class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
-
   val impl: TestService[IO] = new TestService[IO] {
     def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
       IO(request)
@@ -149,7 +150,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
         status.pure[IO]
       }
       .assertEquals(
-        Some(org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(Unimplemented))
+        Some(org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(Unimplemented.code))
       )
   }
 
@@ -158,7 +159,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       val route = org.http4s.HttpRoutes.of[IO] { case _ =>
         Response(Status.Ok)
           .putHeaders(
-            org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(Unimplemented)
+            org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(Unimplemented.code)
           )
           .pure[IO]
       }
@@ -168,8 +169,8 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       )
       client
         .`export`(msg, Headers.empty)
-        .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
-        .map(_.leftMap(grpcFailed => grpcFailed.status))
+        .attemptNarrow[GrpcStatusException]
+        .map(_.leftMap(_.status))
         .assertEquals(Either.left(Unimplemented))
     }
   }
@@ -177,9 +178,11 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   test("Server Fails in Trailers") {
 
     forAllF { (msg: TestMessage) =>
+      val exception = new RuntimeException("Boo!")
+
       val ts = new TestService[IO] {
         def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
-          IO(request) <* IO.raiseError(new RuntimeException("Boo!"))
+          IO(request) <* IO.raiseError(exception)
 
         def clientStreaming(request: Stream[IO, TestMessage], ctx: Headers): IO[TestMessage] =
           request.compile.lastOrError
@@ -199,23 +202,29 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
       client
         .noStreaming(msg, Headers.empty)
-        .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
-        .map(_.leftMap(grpcFailed => grpcFailed.status))
-        .assertEquals(Either.left(Unknown))
+        .attemptNarrow[GrpcStatusException]
+        .map(_.leftMap(_.status))
+        .assertEquals(Either.left(Unknown.withMessage(exception.toString)))
     }
 
   }
 
-  test("Server Fails with an Status Code") {
+  test("Server Fails with a Status") {
+    implicit val arbitraryStatus: Arbitrary[GrpcStatus] =
+      Arbitrary(
+        for {
+          code <- Gen.oneOf(GrpcStatusCode.values)
+          if code != GrpcStatusCode.Ok
+          message <- Gen.option(arbitrary[String])
+          details <- arbitrary[TestMessage]
+          status = GrpcStatus(code, message).addDetails(details)
+        } yield status
+      )
 
-    implicit val arbitraryStatusCode: Arbitrary[Code] = Arbitrary(
-      Gen.oneOf(codeValues.filter(_ != Ok))
-    )
-
-    forAllF { (msg: TestMessage, statusCode: Code) =>
+    forAllF { (msg: TestMessage, status: GrpcStatus) =>
       val ts = new TestService[IO] {
         def noStreaming(request: TestMessage, ctx: Headers): IO[TestMessage] =
-          IO(request) <* IO.raiseError(statusCode.asStatusRuntimeException())
+          IO(request) <* IO.raiseError(status.toException)
 
         def clientStreaming(request: Stream[IO, TestMessage], ctx: Headers): IO[TestMessage] =
           request.compile.lastOrError
@@ -235,11 +244,9 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
       client
         .noStreaming(msg, Headers.empty)
-        .attemptNarrow[org.http4s.grpc.GrpcExceptions.StatusRuntimeException]
-        .map(_.leftMap(grpcFailed => grpcFailed.status))
-        .assertEquals(Either.left(statusCode))
+        .attemptNarrow[GrpcStatusException]
+        .map(_.leftMap(_.status))
+        .assertEquals(Either.left(status))
     }
-
   }
-
 }

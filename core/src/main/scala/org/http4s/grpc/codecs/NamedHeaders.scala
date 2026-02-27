@@ -24,12 +24,14 @@ package org.http4s.grpc.codecs
 import cats.parse.Parser
 import cats.syntax.all._
 import org.http4s.Header
+import org.http4s.ParseFailure
 import org.http4s.ParseResult
-import org.http4s.grpc.GrpcStatus.Code
-import org.http4s.grpc.GrpcStatus.fromCodeValue
+import org.http4s.grpc.GrpcStatusCode
+import org.http4s.grpc.GrpcStatusDetails
 import org.http4s.internal.parsing.CommonRules.ows
 import org.http4s.parser.AdditionalRules
 import org.typelevel.ci.CIString
+import scodec.bits.ByteVector
 
 import scala.concurrent.duration._
 
@@ -78,17 +80,32 @@ object NamedHeaders {
   }
 
   // https://grpc.github.io/grpc/core/md_doc_statuscodes.html
-  final case class GrpcStatus(statusCode: Code)
+  final case class GrpcStatus(statusCode: GrpcStatusCode)
 
   object GrpcStatus {
     private val parser = cats.parse.Numbers.nonNegativeIntString
-      .mapFilter(s => fromCodeValue(s.toInt))
+      .mapFilter(s => GrpcStatusCode.fromValue(s.toInt))
       .map(GrpcStatus(_))
 
     implicit val header: Header[GrpcStatus, Header.Single] = Header.create(
       CIString("grpc-status"),
       (t: GrpcStatus) => t.statusCode.value.toString(),
       (s: String) => ParseResult.fromParser(parser, "Invalid GrpcStatus")(s),
+    )
+  }
+
+  final case class GrpcStatusDetailsBin(details: GrpcStatusDetails)
+
+  object GrpcStatusDetailsBin {
+    implicit val header: Header[GrpcStatusDetailsBin, Header.Single] = Header.create(
+      CIString("grpc-status-details-bin"),
+      status => status.details.toByteVector.toBase64,
+      (s: String) =>
+        ByteVector
+          .fromBase64(s)
+          .flatMap(GrpcStatusDetails.fromByteVector)
+          .map(apply)
+          .toRight(ParseFailure("Invalid GrpcStatusDetailsBin", s)),
     )
   }
 
