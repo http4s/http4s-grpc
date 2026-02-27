@@ -22,11 +22,15 @@
 package org.http4s.grpc
 
 object GrpcExceptions {
-  final case class StatusRuntimeException(status: GrpcStatus.Code, message: Option[String])
+  final case class StatusRuntimeException(status: GrpcStatus)
       extends RuntimeException({
-        val me = message.fold("")((m: String) => s", Message-${m}")
-        s"Grpc Failed: Status-${status.value}${me}"
+        val message = status.message.fold("")(m => s", Message-${m}")
+        val details = status.details.fold("")(d =>
+          s", Details-{Code-${d.code}, Message-${d.message}, Details-${d.details}}"
+        )
+        s"Grpc Failed: Status-${status.code.value}${message}${details}"
       }) {
-    assert(status != GrpcStatus.Ok)
+
+    assert(status.code != GrpcStatusCode.Ok)
   }
 }

@@ -4,7 +4,7 @@ inThisBuild(
   Seq(
     crossScalaVersions := Seq(scala213Version, scala3Version),
     scalaVersion := scala213Version,
-    tlBaseVersion := "0.1",
+    tlBaseVersion := "0.2",
     organizationName := "Christopher Davenport",
     startYear := Some(2023),
     licenses := Seq(License.MIT),
@@ -25,6 +25,7 @@ val scala212Version = "2.12.21"
 val scala213Version = "2.13.18"
 val scala3Version = "3.3.7"
 val scalaCheckEffectMunitVersion = "2.1.0-RC1"
+val scalapbGoogleProtosVersion = "2.9.6-0"
 val scalapbVersion = scalapb.compiler.Version.scalapbVersion
 
 lazy val `http4s-grpc` = tlCrossRootProject
@@ -46,6 +47,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "org.http4s" %%% "http4s-client" % http4sVersion,
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectVersion % Test,
       "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapbVersion,
+      "com.thesamet.scalapb.common-protos" %% "proto-google-common-protos-scalapb_0.11" % scalapbGoogleProtosVersion,
     ),
     unusedCompileDependenciesFilter -= moduleFilter(),
   )
