@@ -21,6 +21,7 @@
 
 package org.http4s.grpc
 
+import com.google.protobuf.any.{Any => PbAny}
 import scalapb.GeneratedMessage
 
 sealed abstract class GrpcStatus extends Product with Serializable {

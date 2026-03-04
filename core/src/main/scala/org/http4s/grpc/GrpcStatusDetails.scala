@@ -21,9 +21,11 @@
 
 package org.http4s.grpc
 
+import com.google.protobuf.any.{Any => PbAny}
 import com.google.protobuf.CodedInputStream
 import com.google.protobuf.CodedOutputStream
 import scalapb.GeneratedMessage
+import scalapb.LiteParser
 import scodec.bits.ByteVector
 
 import scala.util.control.NonFatal
@@ -120,7 +122,7 @@ object GrpcStatusDetails {
           case 0 => done = true
           case 8 => code = GrpcStatusCode.fromValue(input.readInt32())
           case 18 => message = input.readStringRequireUtf8()
-          case 26 => details += PbAny.readFrom(input)
+          case 26 => details += LiteParser.readMessage[PbAny](input)
           case _ => () // ignore unknown fields
         }
 
