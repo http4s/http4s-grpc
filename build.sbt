@@ -4,7 +4,7 @@ inThisBuild(
   Seq(
     crossScalaVersions := Seq(scala213Version, scala3Version),
     scalaVersion := scala213Version,
-    tlBaseVersion := "0.1",
+    tlBaseVersion := "0.2",
     organizationName := "Christopher Davenport",
     startYear := Some(2023),
     licenses := Seq(License.MIT),

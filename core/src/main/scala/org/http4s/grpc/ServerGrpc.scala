@@ -21,13 +21,13 @@
 
 package org.http4s.grpc
 
+import cats.Functor
 import cats.Monad
 import cats.effect._
 import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.dsl.request._
-import org.http4s.grpc.GrpcExceptions.StatusRuntimeException
 import org.http4s.grpc.GrpcStatus._
 import org.http4s.grpc.codecs.NamedHeaders
 import org.http4s.headers.Allow
@@ -61,12 +61,8 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Code, Option[String])]
-        trailers = status.get.map { case (i, message) =>
-          Headers(
-            NamedHeaders.GrpcStatus(i)
-          ).put(message.map(NamedHeaders.GrpcMessage(_)))
-        }
+        status <- Deferred[F, GrpcStatus]
+        trailers = statusTrailers(status)
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream
@@ -99,12 +95,8 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Code, Option[String])]
-        trailers = status.get.map { case (i, message) =>
-          Headers(
-            NamedHeaders.GrpcStatus(i)
-          ).put(message.map(NamedHeaders.GrpcMessage(_)))
-        }
+        status <- Deferred[F, GrpcStatus]
+        trailers = statusTrailers(status)
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream
@@ -136,12 +128,8 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Code, Option[String])]
-        trailers = status.get.map { case (i, message) =>
-          Headers(
-            NamedHeaders.GrpcStatus(i)
-          ).put(message.map(NamedHeaders.GrpcMessage(_)))
-        }
+        status <- Deferred[F, GrpcStatus]
+        trailers = statusTrailers(status)
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
 
       } yield {
@@ -174,12 +162,8 @@ object ServerGrpc {
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
-        status <- Deferred[F, (Code, Option[String])]
-        trailers = status.get.map { case (i, message) =>
-          Headers(
-            NamedHeaders.GrpcStatus(i)
-          ).put(message.map(NamedHeaders.GrpcMessage(_)))
-        }
+        status <- Deferred[F, GrpcStatus]
+        trailers = statusTrailers(status)
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
 
@@ -207,7 +191,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(Unimplemented),
+          NamedHeaders.GrpcStatus(Unimplemented.code),
           "grpc-message" -> s"unknown method $mN for service $sN",
         )
         .pure[F]
@@ -219,7 +203,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(Unimplemented),
+          NamedHeaders.GrpcStatus(Unimplemented.code),
           "grpc-message" -> s"unknown service $sN",
         )
         .pure[F]
@@ -228,7 +212,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(Unimplemented),
+          NamedHeaders.GrpcStatus(Unimplemented.code),
           "grpc-message" -> s"unknown method $other",
         )
         .pure[F]
@@ -237,7 +221,7 @@ object ServerGrpc {
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
-          NamedHeaders.GrpcStatus(Unimplemented),
+          NamedHeaders.GrpcStatus(Unimplemented.code),
           "grpc-message" -> s"unknown request",
         )
         .pure[F]
@@ -251,14 +235,21 @@ object ServerGrpc {
       case Some(value) => s.timeout(value)
     }
 
+  private def statusTrailers[F[_]: Functor](deferred: Deferred[F, GrpcStatus]): F[Headers] =
+    deferred.get.map { status =>
+      val grpcStatus = NamedHeaders.GrpcStatus(status.code)
+      val grpcMessage = status.message.map(NamedHeaders.GrpcMessage(_))
+      val grpcDetails = status.details.map(NamedHeaders.GrpcStatusDetailsBin(_))
+      Headers(grpcStatus).put(grpcMessage, grpcDetails)
+    }
+
   private def updateStatus[F[_]: Concurrent](
-      status: Deferred[F, (Code, Option[String])]
+      deferred: Deferred[F, GrpcStatus]
   ): Resource.ExitCase => F[Unit] = {
-    case Resource.ExitCase.Errored(StatusRuntimeException(c, m)) => status.complete((c, m)).void
-    case Resource.ExitCase.Errored(_: TimeoutException) =>
-      status.complete((DeadlineExceeded, None)).void
-    case Resource.ExitCase.Errored(e) => status.complete((Unknown, e.toString().some)).void
-    case Resource.ExitCase.Canceled => status.complete((Cancelled, None)).void
-    case Resource.ExitCase.Succeeded => status.complete((Ok, None)).void
+    case Resource.ExitCase.Errored(GrpcStatusException(status)) => deferred.complete(status).void
+    case Resource.ExitCase.Errored(_: TimeoutException) => deferred.complete(DeadlineExceeded).void
+    case Resource.ExitCase.Errored(e) => deferred.complete(Unknown.withMessage(e.toString)).void
+    case Resource.ExitCase.Canceled => deferred.complete(Cancelled).void
+    case Resource.ExitCase.Succeeded => deferred.complete(Ok).void
   }
 }

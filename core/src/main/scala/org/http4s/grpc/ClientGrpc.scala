@@ -27,7 +27,7 @@ import cats.syntax.all._
 import fs2._
 import org.http4s._
 import org.http4s.client.Client
-import org.http4s.grpc.GrpcStatus._
+import org.http4s.grpc.GrpcStatusCode._
 import org.http4s.grpc.codecs.NamedHeaders
 import org.http4s.h2.H2Keys
 import scodec.Decoder
@@ -194,16 +194,17 @@ object ClientGrpc {
       )
   }
 
-  private def handleFailure[F[_]: MonadThrow](headers: Headers): F[Unit] = {
-    val status = headers.get[NamedHeaders.GrpcStatus]
-    val reason = headers.get[NamedHeaders.GrpcMessage]
-
-    status match {
+  private def handleFailure[F[_]: ApplicativeThrow](headers: Headers): F[Unit] =
+    headers.get[NamedHeaders.GrpcStatus] match {
       case Some(NamedHeaders.GrpcStatus(Ok)) => ().pure[F]
-      case Some(NamedHeaders.GrpcStatus(status)) =>
-        GrpcExceptions.StatusRuntimeException(status, reason.map(_.message)).raiseError[F, Unit]
+      case Some(NamedHeaders.GrpcStatus(code)) =>
+        GrpcStatusException(
+          GrpcStatus(
+            code = code,
+            message = headers.get[NamedHeaders.GrpcMessage].map(_.message),
+            details = headers.get[NamedHeaders.GrpcStatusDetailsBin].map(_.details),
+          )
+        ).raiseError[F, Unit]
       case None => ().pure[F]
     }
-  }
-
 }
