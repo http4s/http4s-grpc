@@ -21,9 +21,9 @@
 
 package org.http4s.grpc
 
-import com.google.protobuf.any.{Any => PbAny}
 import com.google.protobuf.CodedInputStream
 import com.google.protobuf.CodedOutputStream
+import com.google.protobuf.any.{Any => PbAny}
 import scalapb.GeneratedMessage
 import scalapb.LiteParser
 import scodec.bits.ByteVector
