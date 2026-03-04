@@ -41,6 +41,8 @@ sealed abstract class GrpcStatus extends Product with Serializable {
 
   def addDetails[A <: GeneratedMessage](details: A): GrpcStatus
 
+  def addDetails[A <: GeneratedMessage](details: A, urlPrefix: String): GrpcStatus
+
   def addAllDetails(details: PbAny*): GrpcStatus
 
   def withDetails(details: GrpcStatusDetails): GrpcStatus
@@ -90,6 +92,9 @@ object GrpcStatus {
 
     override def addDetails[A <: GeneratedMessage](details: A): GrpcStatus =
       addAllDetails(PbAny.pack(details))
+
+    def addDetails[A <: GeneratedMessage](details: A, urlPrefix: String): GrpcStatus =
+      addAllDetails(PbAny.pack(details, urlPrefix))
 
     override def addAllDetails(details: PbAny*): GrpcStatus =
       if (details.isEmpty) this
