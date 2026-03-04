@@ -28,6 +28,7 @@ final case class GrpcStatusException(status: GrpcStatus)
     with NoStackTrace {
 
   assert(status != GrpcStatus.Ok)
+  assert(status.details.forall(_.code == status.code))
 
   override def getMessage: String =
     s"Grpc Failed: $status"
