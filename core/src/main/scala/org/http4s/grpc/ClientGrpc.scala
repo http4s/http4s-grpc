@@ -194,22 +194,17 @@ object ClientGrpc {
       )
   }
 
-  private def handleFailure[F[_]: MonadThrow](headers: Headers): F[Unit] = {
-    val status = headers.get[NamedHeaders.GrpcStatus]
-    val message = headers.get[NamedHeaders.GrpcMessage]
-    val details = headers.get[NamedHeaders.GrpcStatusDetailsBin]
-
-    status match {
+  private def handleFailure[F[_]: ApplicativeThrow](headers: Headers): F[Unit] =
+    headers.get[NamedHeaders.GrpcStatus] match {
       case Some(NamedHeaders.GrpcStatus(Ok)) => ().pure[F]
       case Some(NamedHeaders.GrpcStatus(code)) =>
         GrpcStatusException(
           GrpcStatus(
             code = code,
-            message = message.map(_.message),
-            details = details.map(_.details),
+            message = headers.get[NamedHeaders.GrpcMessage].map(_.message),
+            details = headers.get[NamedHeaders.GrpcStatusDetailsBin].map(_.details),
           )
         ).raiseError[F, Unit]
       case None => ().pure[F]
     }
-  }
 }
