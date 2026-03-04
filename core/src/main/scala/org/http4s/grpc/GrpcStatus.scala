@@ -21,20 +21,41 @@
 
 package org.http4s.grpc
 
-import com.google.protobuf.any.{Any => PbAny}
+import com.google.protobuf.any.{Any => ProtobufAny}
 import scalapb.GeneratedMessage
 
 sealed abstract class GrpcStatus extends Product with Serializable {
   def code: GrpcStatusCode
 
+  /** Returns a new [[GrpcStatus]] instance with the specified code.
+    *
+    * If details have been added, the details code will
+    * also be updated.
+    */
   def withCode(code: GrpcStatusCode): GrpcStatus
 
   def message: Option[String]
 
+  /** Returns a new [[GrpcStatus]] instance with the specified message.
+    *
+    * If details have been added, the details message will
+    * also be updated.
+    */
   def withMessage(message: String): GrpcStatus
 
+  /** Returns a new [[GrpcStatus]] instance with the specified message,
+    * removing the message if `None` is provided.
+    *
+    * If details have been added, the details message will
+    * also be updated, or removed if `None` is provided.
+    */
   def withMessageOption(message: Option[String]): GrpcStatus
 
+  /** Returns a new [[GrpcStatus]] instance with the message removed.
+    *
+    * If details have been added, the details message will
+    * also be removed.
+    */
   def withoutMessage: GrpcStatus
 
   def details: Option[GrpcStatusDetails]
@@ -43,7 +64,7 @@ sealed abstract class GrpcStatus extends Product with Serializable {
 
   def addDetails[A <: GeneratedMessage](details: A, urlPrefix: String): GrpcStatus
 
-  def addAllDetails(details: PbAny*): GrpcStatus
+  def addAllDetails(details: ProtobufAny*): GrpcStatus
 
   def withDetails(details: GrpcStatusDetails): GrpcStatus
 
@@ -91,12 +112,12 @@ object GrpcStatus {
       withMessageOption(None)
 
     override def addDetails[A <: GeneratedMessage](details: A): GrpcStatus =
-      addAllDetails(PbAny.pack(details))
+      addAllDetails(ProtobufAny.pack(details))
 
     def addDetails[A <: GeneratedMessage](details: A, urlPrefix: String): GrpcStatus =
-      addAllDetails(PbAny.pack(details, urlPrefix))
+      addAllDetails(ProtobufAny.pack(details, urlPrefix))
 
-    override def addAllDetails(details: PbAny*): GrpcStatus =
+    override def addAllDetails(details: ProtobufAny*): GrpcStatus =
       if (details.isEmpty) this
       else
         withDetails(this.details match {
