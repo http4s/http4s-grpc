@@ -23,7 +23,7 @@ package org.http4s.grpc
 
 import com.google.protobuf.CodedInputStream
 import com.google.protobuf.CodedOutputStream
-import com.google.protobuf.any.{Any => PbAny}
+import com.google.protobuf.any.{Any => ProtobufAny}
 import scalapb.GeneratedMessage
 import scalapb.LiteParser
 import scodec.bits.ByteVector
@@ -44,13 +44,15 @@ sealed abstract class GrpcStatusDetails extends Product with Serializable {
 
   def withoutMessage: GrpcStatusDetails
 
-  def details: List[PbAny]
+  def details: List[ProtobufAny]
 
   def addDetails[A <: GeneratedMessage](details: A): GrpcStatusDetails
 
-  def addAllDetails(details: PbAny*): GrpcStatusDetails
+  def addDetails[A <: GeneratedMessage](details: A, urlPrefix: String): GrpcStatusDetails
 
-  def withDetails(details: List[PbAny]): GrpcStatusDetails
+  def addAllDetails(details: ProtobufAny*): GrpcStatusDetails
+
+  def withDetails(details: List[ProtobufAny]): GrpcStatusDetails
 
   def withoutDetails: GrpcStatusDetails
 
@@ -108,7 +110,7 @@ object GrpcStatusDetails {
   def apply(
       code: GrpcStatusCode,
       message: String,
-      details: List[PbAny],
+      details: List[ProtobufAny],
   ): GrpcStatusDetails =
     GrpcStatusDetailsImpl(code, message, details)
 
@@ -117,7 +119,7 @@ object GrpcStatusDetails {
       val input = CodedInputStream.newInstance(bytes.toArrayUnsafe)
       var code: Option[GrpcStatusCode] = Some(GrpcStatusCode.Ok)
       var message = ""
-      val details = List.newBuilder[PbAny]
+      val details = List.newBuilder[ProtobufAny]
       var done = false
 
       while (!done)
@@ -125,7 +127,7 @@ object GrpcStatusDetails {
           case 0 => done = true
           case 8 => code = GrpcStatusCode.fromValue(input.readInt32())
           case 18 => message = input.readStringRequireUtf8()
-          case 26 => details += LiteParser.readMessage[PbAny](input)
+          case 26 => details += LiteParser.readMessage[ProtobufAny](input)
           case _ => () // ignore unknown fields
         }
 
@@ -135,7 +137,7 @@ object GrpcStatusDetails {
   private final case class GrpcStatusDetailsImpl(
       override val code: GrpcStatusCode,
       override val message: String,
-      override val details: List[PbAny],
+      override val details: List[ProtobufAny],
   ) extends GrpcStatusDetails {
     override def withCode(code: GrpcStatusCode): GrpcStatusDetails =
       copy(code = code)
@@ -147,13 +149,19 @@ object GrpcStatusDetails {
       withMessage("")
 
     override def addDetails[A <: GeneratedMessage](details: A): GrpcStatusDetails =
-      addAllDetails(PbAny.pack(details))
+      addAllDetails(ProtobufAny.pack(details))
 
-    override def addAllDetails(details: PbAny*): GrpcStatusDetails =
+    override def addDetails[A <: GeneratedMessage](
+        details: A,
+        urlPrefix: String,
+    ): GrpcStatusDetails =
+      addAllDetails(ProtobufAny.pack(details, urlPrefix))
+
+    override def addAllDetails(details: ProtobufAny*): GrpcStatusDetails =
       if (details.isEmpty) this
       else withDetails(this.details ++ details)
 
-    override def withDetails(details: List[PbAny]): GrpcStatusDetails =
+    override def withDetails(details: List[ProtobufAny]): GrpcStatusDetails =
       copy(details = details)
 
     override def withoutDetails: GrpcStatusDetails =
