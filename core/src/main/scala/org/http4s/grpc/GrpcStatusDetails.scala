@@ -30,6 +30,9 @@ import scodec.bits.ByteVector
 
 import scala.util.control.NonFatal
 
+/** This is a partial implementation of `google.rpc.Status`
+  * for the purposes of the library.
+  */
 sealed abstract class GrpcStatusDetails extends Product with Serializable {
   def code: GrpcStatusCode
 
