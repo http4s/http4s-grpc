@@ -24,7 +24,7 @@ val sbtProtocVersion = "1.0.8"
 val scala212Version = "2.12.21"
 val scala213Version = "2.13.18"
 val scala3Version = "3.3.7"
-val scalaCheckEffectMunitVersion = "2.1.0-RC1"
+val scalaCheckEffectMunitVersion = "2.1.0"
 val scalapbVersion = scalapb.compiler.Version.scalapbVersion
 
 lazy val `http4s-grpc` = tlCrossRootProject
