@@ -17,7 +17,7 @@ inThisBuild(
 val catsEffectVersion = "3.7.0"
 val catsVersion = "2.13.0"
 val fs2Version = "3.13.0"
-val http4sVersion = "0.23.33"
+val http4sVersion = "0.23.34"
 val munitCatsEffectVersion = "2.2.0"
 val sbtPlatformDepsVersion = "1.0.2"
 val sbtProtocVersion = "1.0.8"
