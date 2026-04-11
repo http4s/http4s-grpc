@@ -4,7 +4,7 @@ inThisBuild(
   Seq(
     crossScalaVersions := Seq(scala213Version, scala3Version),
     scalaVersion := scala213Version,
-    tlBaseVersion := "0.2",
+    tlBaseVersion := "0.3",
     organizationName := "Christopher Davenport",
     startYear := Some(2023),
     licenses := Seq(License.MIT),
@@ -31,7 +31,7 @@ lazy val `http4s-grpc` = tlCrossRootProject
   .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
   .settings(unusedCompileDependenciesFilter -= moduleFilter())
 
-lazy val core = crossProject(JVMPlatform, JSPlatform)
+lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("core"))
   .settings(
@@ -51,6 +51,9 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   )
   .jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+  )
+  .nativeSettings(
+    tlVersionIntroduced := List("2.13", "3").map(_ -> "0.3.0").toMap
   )
 
 lazy val codeGenerator =
@@ -96,7 +99,7 @@ lazy val codeGeneratorPlugin = project
   )
   .disablePlugins(ScalafixPlugin)
 
-lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform)
+lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("codegen/testing"))
   .enablePlugins(LocalCodeGenPlugin, BuildInfoPlugin, NoPublishPlugin)
@@ -120,6 +123,9 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform)
     ),
     githubWorkflowArtifactUpload := false,
     unusedCompileDependenciesFilter -= moduleFilter(),
+  )
+  .nativeSettings(
+    tlVersionIntroduced := List("2.13", "3").map(_ -> "0.3.0").toMap
   )
   .disablePlugins(ScalafixPlugin)
 
