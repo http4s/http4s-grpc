@@ -14,7 +14,7 @@ inThisBuild(
   )
 )
 
-val catsEffectVersion = "3.7.0"
+val catsEffectVersion = "3.7.1"
 val catsVersion = "2.13.0"
 val fs2Version = "3.13.0"
 val http4sVersion = "0.23.36"
