@@ -51,11 +51,20 @@ object ServerGrpc {
     .get(CIString("Content-Type"))
     .exists(_.exists(_.value.startsWith("application/grpc")))
 
+  def unaryToUnary[F[_]: Temporal, A, B](
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+  )(f: (A, Headers) => F[B]): HttpRoutes[F] =
+    unaryToUnary(decode, encode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(f)
+
   def unaryToUnary[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
       encode: Encoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (A, Headers) => F[B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
@@ -66,7 +75,7 @@ object ServerGrpc {
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream
-          .eval(codecs.Messages.decodeSingle(decode)(req.body))
+          .eval(codecs.Messages.decodeSingle(decode, maxMessageSize)(req.body))
           .evalMap(f(_, req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
@@ -85,11 +94,20 @@ object ServerGrpc {
       }
   }
 
+  def unaryToStream[F[_]: Temporal, A, B](
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+  )(f: (A, Headers) => Stream[F, B]): HttpRoutes[F] =
+    unaryToStream(decode, encode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(f)
+
   def unaryToStream[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
       encode: Encoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (A, Headers) => Stream[F, B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
@@ -100,7 +118,7 @@ object ServerGrpc {
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
         val body = Stream
-          .eval(codecs.Messages.decodeSingle(decode)(req.body))
+          .eval(codecs.Messages.decodeSingle(decode, maxMessageSize)(req.body))
           .flatMap(f(_, req.headers))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
@@ -118,11 +136,20 @@ object ServerGrpc {
       }
   }
 
+  def streamToUnary[F[_]: Temporal, A, B](
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+  )(f: (Stream[F, A], Headers) => F[B]): HttpRoutes[F] =
+    streamToUnary(decode, encode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(f)
+
   def streamToUnary[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
       encode: Encoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (Stream[F, A], Headers) => F[B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
@@ -134,7 +161,7 @@ object ServerGrpc {
 
       } yield {
         val body = Stream
-          .eval(f(codecs.Messages.decode(decode)(req.body), req.headers))
+          .eval(f(codecs.Messages.decode(decode, maxMessageSize)(req.body), req.headers))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
@@ -152,11 +179,22 @@ object ServerGrpc {
       }
   }
 
+  def streamToStream[F[_]: Temporal, A, B](
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+  )(f: (Stream[F, A], Headers) => Stream[F, B]): HttpRoutes[F] =
+    streamToStream(decode, encode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(
+      f
+    )
+
   def streamToStream[F[_]: Temporal, A, B]( // Stuff We can provide via codegen\
       decode: Decoder[A],
       encode: Encoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (Stream[F, A], Headers) => Stream[F, B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
@@ -167,7 +205,7 @@ object ServerGrpc {
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
 
-        val body = f(codecs.Messages.decode(decode)(req.body), req.headers)
+        val body = f(codecs.Messages.decode(decode, maxMessageSize)(req.body), req.headers)
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))

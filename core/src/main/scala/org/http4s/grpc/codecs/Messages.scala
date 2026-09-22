@@ -25,16 +25,32 @@ import cats._
 import cats.effect._
 import cats.syntax.all._
 import fs2._
+import org.http4s.grpc.GrpcStatus
+import org.http4s.grpc.GrpcStatusException
 import scodec.Attempt
 
 object Messages {
 
+  /** Default max size of a received message, 4 MiB, same as other gRPC implementations. */
+  val DefaultMaxMessageSize: Int = 4 * 1024 * 1024
+
   def decode[F[_]: MonadThrow, A](d: scodec.Decoder[A])(s: Stream[F, Byte]): Stream[F, A] =
-    decodeLPMStream(s)
+    decode(d, DefaultMaxMessageSize)(s)
+
+  /** Fails with ResourceExhausted if a message is larger than maxMessageSize bytes. */
+  def decode[F[_]: MonadThrow, A](d: scodec.Decoder[A], maxMessageSize: Int)(
+      s: Stream[F, Byte]
+  ): Stream[F, A] =
+    decodeLPMStream(maxMessageSize)(s)
       .through(decodeLPMThroughDecoder(d))
 
   def decodeSingle[F[_]: Concurrent, A](d: scodec.Decoder[A])(s: Stream[F, Byte]): F[A] =
-    decode(d)(s)
+    decodeSingle(d, DefaultMaxMessageSize)(s)
+
+  def decodeSingle[F[_]: Concurrent, A](d: scodec.Decoder[A], maxMessageSize: Int)(
+      s: Stream[F, Byte]
+  ): F[A] =
+    decode(d, maxMessageSize)(s)
       .take(1)
       .compile
       .lastOrError
@@ -44,10 +60,34 @@ object Messages {
   ): Stream[F, A] =
     s.evalMap(lpm => liftAttempt(d.decodeValue(lpm.message.bits)))
 
-  private def decodeLPMStream[F[_]: RaiseThrowable](
+  private def decodeLPMStream[F[_]: RaiseThrowable](maxMessageSize: Int)(
       s: Stream[F, Byte]
-  ): Stream[F, LengthPrefixedMessage] =
-    s.through(fs2.interop.scodec.StreamDecoder.many(LengthPrefixedMessage.codec).toPipeByte)
+  ): Stream[F, LengthPrefixedMessage] = {
+    def go(s: Stream[F, Byte]): Pull[F, LengthPrefixedMessage, Unit] =
+      s.pull.unconsN(5, allowFewer = true).flatMap {
+        case Some((prefix, rest)) if prefix.size == 5 =>
+          val bytes = prefix.toByteVector
+          val size = bytes.drop(1).toLong(signed = false)
+          if (size > maxMessageSize)
+            Pull.raiseError[F](
+              GrpcStatusException(
+                GrpcStatus.ResourceExhausted.withMessage(
+                  s"gRPC message exceeds maximum size $maxMessageSize: $size"
+                )
+              )
+            )
+          else
+            rest.pull.unconsN(size.toInt, allowFewer = true).flatMap {
+              case Some((message, rest)) if message.size.toLong == size =>
+                Pull.output1(LengthPrefixedMessage(bytes.head == 1, message.toByteVector)) >>
+                  go(rest)
+              case _ => Pull.done
+            }
+        case _ => Pull.done
+      }
+
+    go(s).stream
+  }
 
   def encode[F[_]: MonadThrow, A](e: scodec.Encoder[A])(s: Stream[F, A]): Stream[F, Byte] =
     s.through(encodeLPMThroughEncoder[F, A](e))

@@ -34,11 +34,29 @@ import scodec.Decoder
 import scodec.Encoder
 
 object ClientGrpc {
+  def unaryToUnary[F[_]: Concurrent, A, B](
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
+  )(
+      client: Client[F],
+      baseUri: Uri,
+  )(
+      message: A,
+      ctx: Headers,
+  ): F[B] =
+    unaryToUnary(encode, decode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(
+      client,
+      baseUri,
+    )(message, ctx)
+
   def unaryToUnary[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
       encode: Encoder[A],
       decode: Decoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff We can apply at application scope
       client: Client[F],
       baseUri: Uri,
@@ -62,7 +80,7 @@ object ClientGrpc {
       .use(resp =>
         handleFailure(resp.headers) >>
           codecs.Messages
-            .decodeSingle(decode)(resp.body)
+            .decodeSingle(decode, maxMessageSize)(resp.body)
             .handleErrorWith(e =>
               resp.trailerHeaders
                 .flatMap(handleFailure[F])
@@ -73,11 +91,29 @@ object ClientGrpc {
       )
   }
 
+  def unaryToStream[F[_]: Concurrent, A, B](
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
+  )(
+      client: Client[F],
+      baseUri: Uri,
+  )(
+      message: A,
+      ctx: Headers,
+  ): Stream[F, B] =
+    unaryToStream(encode, decode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(
+      client,
+      baseUri,
+    )(message, ctx)
+
   def unaryToStream[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
       encode: Encoder[A],
       decode: Decoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff We can apply at application scope
       client: Client[F],
       baseUri: Uri,
@@ -101,7 +137,7 @@ object ClientGrpc {
       .flatMap(resp =>
         Stream.eval(handleFailure(resp.headers)).drain ++
           codecs.Messages
-            .decode[F, B](decode)(resp.body)
+            .decode[F, B](decode, maxMessageSize)(resp.body)
             .handleErrorWith(e =>
               Stream.eval(
                 resp.trailerHeaders
@@ -114,11 +150,29 @@ object ClientGrpc {
       )
   }
 
+  def streamToUnary[F[_]: Concurrent, A, B](
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
+  )(
+      client: Client[F],
+      baseUri: Uri,
+  )(
+      message: Stream[F, A],
+      ctx: Headers,
+  ): F[B] =
+    streamToUnary(encode, decode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(
+      client,
+      baseUri,
+    )(message, ctx)
+
   def streamToUnary[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
       encode: Encoder[A],
       decode: Decoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff We can apply at application scope
       client: Client[F],
       baseUri: Uri,
@@ -142,7 +196,7 @@ object ClientGrpc {
       .use(resp =>
         handleFailure(resp.headers) >>
           codecs.Messages
-            .decodeSingle(decode)(resp.body)
+            .decodeSingle(decode, maxMessageSize)(resp.body)
             .handleErrorWith(e =>
               resp.trailerHeaders
                 .flatMap(handleFailure[F])
@@ -153,11 +207,29 @@ object ClientGrpc {
       )
   }
 
+  def streamToStream[F[_]: Concurrent, A, B](
+      encode: Encoder[A],
+      decode: Decoder[B],
+      serviceName: String,
+      methodName: String,
+  )(
+      client: Client[F],
+      baseUri: Uri,
+  )(
+      message: Stream[F, A],
+      ctx: Headers,
+  ): Stream[F, B] =
+    streamToStream(encode, decode, serviceName, methodName, codecs.Messages.DefaultMaxMessageSize)(
+      client,
+      baseUri,
+    )(message, ctx)
+
   def streamToStream[F[_]: Concurrent, A, B]( // Stuff We can provide via codegen
       encode: Encoder[A],
       decode: Decoder[B],
       serviceName: String,
       methodName: String,
+      maxMessageSize: Int,
   )( // Stuff We can apply at application scope
       client: Client[F],
       baseUri: Uri,
@@ -181,7 +253,7 @@ object ClientGrpc {
       .flatMap(resp =>
         Stream.eval(handleFailure(resp.headers)).drain ++
           codecs.Messages
-            .decode[F, B](decode)(resp.body)
+            .decode[F, B](decode, maxMessageSize)(resp.body)
             .handleErrorWith(e =>
               Stream.eval(
                 resp.trailerHeaders

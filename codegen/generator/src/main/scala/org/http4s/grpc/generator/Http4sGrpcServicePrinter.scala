@@ -72,7 +72,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(
         method
-      )}($encode, $decode, "$serviceName", "$methodName")(client, baseUri)(request, ctx)"""
+      )}($encode, $decode, "$serviceName", "$methodName", maxMessageSize)(client, baseUri)(request, ctx)"""
   }
 
   private[this] def serviceMethodImplementation(method: MethodDescriptor): PrinterEndo = { p =>
@@ -94,7 +94,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
     p.add(s""".combineK($ServerGrpc.${handleMethod(
         method
-      )}($decode, $encode, "$serviceName", "$methodName")(serviceImpl.${method.name}(_, _)))""")
+      )}($decode, $encode, "$serviceName", "$methodName", maxMessageSize)(serviceImpl.${method.name}(_, _)))""")
   }
 
   private[this] def serviceMethods: PrinterEndo = _.call(service.methods.map { method =>
@@ -135,16 +135,24 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceClient: PrinterEndo =
     _.add(
-      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceName[F] = new _root_.$servicePkgName.$serviceName[F] {"
-    ).indent
+      s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceName[F] = fromClient(client, baseUri, $DefaultMaxMessageSize)"
+    ).newline
+      .add(
+        s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri, maxMessageSize: Int): $serviceName[F] = new _root_.$servicePkgName.$serviceName[F] {"
+      )
+      .indent
       .call(serviceMethodImplementations)
       .outdent
       .add("}")
 
   private[this] def serviceBinding: PrinterEndo =
     _.add(
-      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F]): $HttpRoutes[F] = {"
-    ).indent
+      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F]): $HttpRoutes[F] = toRoutes(serviceImpl, $DefaultMaxMessageSize)"
+    ).newline
+      .add(
+        s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F], maxMessageSize: Int): $HttpRoutes[F] = {"
+      )
+      .indent
       .call(serviceBindingImplementations)
       .outdent
       .add("}")
@@ -184,6 +192,7 @@ object Http4sGrpcServicePrinter {
     val HttpRoutes = s"$http4sPkg.HttpRoutes"
 
     val Codec = s"$http4sGrpcPkg.codecs.ScalaPb"
+    val DefaultMaxMessageSize = s"$http4sGrpcPkg.codecs.Messages.DefaultMaxMessageSize"
 
   }
 

@@ -249,4 +249,46 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
         .assertEquals(Either.left(status))
     }
   }
+
+  test("Server rejects messages larger than maxMessageSize") {
+    val client = TestService.fromClient[IO](
+      Client.fromHttpApp(TestService.toRoutes(impl, 16).orNotFound),
+      Uri(),
+    )
+
+    client
+      .noStreaming(TestMessage("a" * 32, 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+  }
+
+  test("Server rejects oversized messages without buffering them") {
+    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
+    val body = Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0)
+
+    client
+      .run(
+        Request[IO](Method.POST, uri"/hello.world.TestService/noStreaming")
+          .withHeaders("Content-Type" -> "application/grpc")
+          .withBodyStream(body)
+      )
+      .use(resp => resp.body.compile.drain >> resp.trailerHeaders)
+      .map(_.get[org.http4s.grpc.codecs.NamedHeaders.GrpcStatus].map(_.statusCode))
+      .assertEquals(Some(GrpcStatusCode.ResourceExhausted))
+  }
+
+  test("Client rejects messages larger than maxMessageSize") {
+    val client = TestService.fromClient[IO](
+      Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
+      Uri(),
+      16,
+    )
+
+    client
+      .noStreaming(TestMessage("a" * 32, 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+  }
 }
