@@ -37,12 +37,16 @@ object Messages {
   def decode[F[_]: MonadThrow, A](d: scodec.Decoder[A])(s: Stream[F, Byte]): Stream[F, A] =
     decode(d, DefaultMaxMessageSize)(s)
 
-  /** Fails with ResourceExhausted if a message is larger than maxMessageSize bytes. */
+  /** Fails with ResourceExhausted, after discarding the rest of the stream, if a message is
+    * larger than maxMessageSize bytes.
+    */
   def decode[F[_]: MonadThrow, A](d: scodec.Decoder[A], maxMessageSize: Int)(
       s: Stream[F, Byte]
-  ): Stream[F, A] =
+  ): Stream[F, A] = {
+    require(maxMessageSize >= 0, s"maxMessageSize must be non-negative: $maxMessageSize")
     decodeLPMStream(maxMessageSize)(s)
       .through(decodeLPMThroughDecoder(d))
+  }
 
   def decodeSingle[F[_]: Concurrent, A](d: scodec.Decoder[A])(s: Stream[F, Byte]): F[A] =
     decodeSingle(d, DefaultMaxMessageSize)(s)
@@ -69,7 +73,7 @@ object Messages {
           val bytes = prefix.toByteVector
           val size = bytes.drop(1).toLong(signed = false)
           if (size > maxMessageSize)
-            Pull.raiseError[F](
+            rest.drain.pull.echo >> Pull.raiseError[F](
               GrpcStatusException(
                 GrpcStatus.ResourceExhausted.withMessage(
                   s"gRPC message exceeds maximum size $maxMessageSize: $size"

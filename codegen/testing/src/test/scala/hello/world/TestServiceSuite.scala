@@ -69,8 +69,14 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
+  private def rechunkedClient(app: HttpApp[IO]): Client[IO] =
+    Client.fromHttpApp(HttpApp[IO] { req =>
+      app(req.withBodyStream(req.body.rechunkRandomly()))
+        .map(resp => resp.withBodyStream(resp.body.rechunkRandomly()))
+    })
+
   val client: TestService[IO] = TestService.fromClient[IO](
-    Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
+    rechunkedClient(TestService.toRoutes(impl).orNotFound),
     Uri(),
   )
 
@@ -258,7 +264,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   test("Server rejects messages larger than maxMessageSize") {
     val client = TestService.fromClient[IO](
-      Client.fromHttpApp(TestService.toRoutes(impl, 16).orNotFound),
+      rechunkedClient(TestService.toRoutes(impl, 16).orNotFound),
       Uri(),
     )
 
@@ -270,8 +276,9 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   }
 
   test("Server rejects oversized messages without buffering them") {
-    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
-    val body = Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0)
+    val client = rechunkedClient(TestService.toRoutes(impl).orNotFound)
+    val body =
+      Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0).take(8L * 1024 * 1024)
 
     client
       .run(
@@ -286,7 +293,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
 
   test("Client rejects messages larger than maxMessageSize") {
     val client = TestService.fromClient[IO](
-      Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
+      rechunkedClient(TestService.toRoutes(impl).orNotFound),
       Uri(),
       16,
     )

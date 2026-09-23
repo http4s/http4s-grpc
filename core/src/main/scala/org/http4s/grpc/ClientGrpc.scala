@@ -81,7 +81,12 @@ object ClientGrpc {
         handleFailure(resp.headers) >>
           codecs.Messages
             .decodeSingle(decode, maxMessageSize)(resp.body)
-            .handleErrorWith(failureFromTrailers[F, B](resp)) <*
+            .handleErrorWith(e =>
+              resp.trailerHeaders
+                .flatMap(handleFailure[F])
+                .attempt
+                .flatMap(t => t.as(e).merge.raiseError[F, B])
+            ) <*
           resp.trailerHeaders.flatMap(handleFailure[F])
       )
   }
@@ -133,7 +138,14 @@ object ClientGrpc {
         Stream.eval(handleFailure(resp.headers)).drain ++
           codecs.Messages
             .decode[F, B](decode, maxMessageSize)(resp.body)
-            .handleErrorWith(e => Stream.eval(failureFromTrailers[F, B](resp)(e))) ++
+            .handleErrorWith(e =>
+              Stream.eval(
+                resp.trailerHeaders
+                  .flatMap(handleFailure[F])
+                  .attempt
+                  .flatMap(t => t.as(e).merge.raiseError[F, B])
+              )
+            ) ++
           Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
       )
   }
@@ -185,7 +197,12 @@ object ClientGrpc {
         handleFailure(resp.headers) >>
           codecs.Messages
             .decodeSingle(decode, maxMessageSize)(resp.body)
-            .handleErrorWith(failureFromTrailers[F, B](resp)) <*
+            .handleErrorWith(e =>
+              resp.trailerHeaders
+                .flatMap(handleFailure[F])
+                .attempt
+                .flatMap(t => t.as(e).merge.raiseError[F, B])
+            ) <*
           resp.trailerHeaders.flatMap(handleFailure[F])
       )
   }
@@ -237,22 +254,17 @@ object ClientGrpc {
         Stream.eval(handleFailure(resp.headers)).drain ++
           codecs.Messages
             .decode[F, B](decode, maxMessageSize)(resp.body)
-            .handleErrorWith(e => Stream.eval(failureFromTrailers[F, B](resp)(e))) ++
+            .handleErrorWith(e =>
+              Stream.eval(
+                resp.trailerHeaders
+                  .flatMap(handleFailure[F])
+                  .attempt
+                  .flatMap(t => t.as(e).merge.raiseError[F, B])
+              )
+            ) ++
           Stream.eval(resp.trailerHeaders).evalMap(handleFailure[F]).drain
       )
   }
-
-  private def failureFromTrailers[F[_]: MonadThrow, B](resp: Response[F])(
-      e: Throwable
-  ): F[B] =
-    e match {
-      case e: GrpcStatusException => e.raiseError[F, B]
-      case e =>
-        resp.trailerHeaders
-          .flatMap(handleFailure[F])
-          .attempt
-          .flatMap(t => t.as(e).merge.raiseError[F, B])
-    }
 
   private def handleFailure[F[_]: ApplicativeThrow](headers: Headers): F[Unit] =
     headers.get[NamedHeaders.GrpcStatus] match {
