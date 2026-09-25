@@ -34,7 +34,11 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   import Http4sGrpcServicePrinter.constants._
 
   private[this] val serviceName: String = service.name
-  private[this] val servicePkgName: String = service.getFile.scalaPackage.fullName
+  private[this] val servicePkgName: String =
+    service.getFile.scalaPackage.fullName.stripPrefix("_root_.")
+
+  private[this] def rooted(name: String): String =
+    if (name.startsWith("_root_.")) name else s"_root_.$name"
 
   private[this] def generateScalaDoc(method: MethodDescriptor): PrinterEndo = { fp =>
     val lines = asScalaDocBlock(method.comment.map(_.split('\n').toSeq).getOrElse(Seq.empty))
@@ -43,8 +47,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
-    val scalaInType = "_root_." + method.inputType.scalaType
-    val scalaOutType = "_root_." + method.outputType.scalaType
+    val scalaInType = rooted(method.inputType.scalaType)
+    val scalaOutType = rooted(method.outputType.scalaType)
     val ctx = s"ctx: $Ctx"
 
     s"def ${method.name}" + (method.streamType match {
@@ -66,8 +70,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val encode = s"$Codec.codecForGenerated(_root_.${method.inputType.scalaType})"
-    val decode = s"$Codec.codecForGenerated(_root_.${method.outputType.scalaType})"
+    val encode = s"$Codec.codecForGenerated(${rooted(method.inputType.scalaType)})"
+    val decode = s"$Codec.codecForGenerated(${rooted(method.outputType.scalaType)})"
     val serviceName = method.getService.getFullName
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(

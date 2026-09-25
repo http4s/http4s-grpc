@@ -28,5 +28,8 @@ Compile / PB.targets ++= Seq(
 )
 ```
 
+The plugin is available for sbt 2.x, but currently depends on pre-release versions of [ScalaPB] and [sbt-protoc].
+
 [ScalaPB]: https://scalapb.github.io/
 [ScalaPB installation]: https://scalapb.github.io/docs/installation
+[sbt-protoc]: https://github.com/thesamet/sbt-protoc

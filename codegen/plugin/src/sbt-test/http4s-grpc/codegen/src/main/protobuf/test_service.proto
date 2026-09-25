@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package hello.world;
+
+message TestMessage {
+  string value = 1;
+}
+
+service TestService {
+  rpc NoStreaming (TestMessage) returns (TestMessage);
+  rpc ClientStreaming (stream TestMessage) returns (TestMessage);
+  rpc ServerStreaming (TestMessage) returns (stream TestMessage);
+  rpc BothStreaming (stream TestMessage) returns (stream TestMessage);
+}
