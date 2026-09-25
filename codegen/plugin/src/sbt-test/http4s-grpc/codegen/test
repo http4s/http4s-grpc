@@ -1,0 +1,4 @@
+> checkRuntime
+> compile
+> checkGenerated
+> run

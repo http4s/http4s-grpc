@@ -23,7 +23,6 @@ package org.http4s.grpc.sbt
 
 import sbt._
 import sbt.Keys._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import protocbridge.{Artifact, SandboxedJvmGenerator, Target}
 import sbtprotoc.ProtocPlugin.autoImport.PB
 
@@ -59,8 +58,6 @@ object Http4sGrpcPlugin extends AutoPlugin {
           (Compile / http4sGrpcOutputPath).value,
           (Compile / http4sGrpcScalaPBOptions).value,
         ),
-      libraryDependencies ++= Seq(
-        BuildInfo.organization %%% BuildInfo.coreModule % BuildInfo.version
-      ),
-    )
+      libraryDependencies += PlatformCompat.coreDependency.value,
+    ) ++ PlatformCompat.projectSettings
 }

@@ -11,6 +11,12 @@ inThisBuild(
     developers := List(
       tlGitHubDev("christopherdavenport", "Christopher Davenport")
     ),
+    githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17")),
+    githubWorkflowBuildPostamble += WorkflowStep.Sbt(
+      List("codeGeneratorPlugin/scripted"),
+      name = Some("Scripted tests"),
+      cond = Some("matrix.project == 'http4s-grpcJVM' && matrix.java == 'temurin@17'"),
+    ),
   )
 )
 
@@ -19,16 +25,20 @@ val catsVersion = "2.13.0"
 val fs2Version = "3.14.0"
 val http4sVersion = "0.23.37"
 val munitCatsEffectVersion = "2.2.1"
+val sbt2Version = "2.0.0"
 val sbtPlatformDepsVersion = "1.0.2"
+val sbtProtoc2Version = "1.1.0-RC2"
 val sbtProtocVersion = "1.0.8"
 val scala212Version = "2.12.21"
 val scala213Version = "2.13.18"
+val scala3PluginVersion = "3.8.4"
 val scala3Version = "3.3.8"
 val scalaCheckEffectMunitVersion = "2.1.0"
+val scalapbSbt2Version = "1.0.0-alpha.6"
 val scalapbVersion = scalapb.compiler.Version.scalapbVersion
 
 lazy val `http4s-grpc` = tlCrossRootProject
-  .aggregate(core, codeGenerator, codeGeneratorTesting, codeGeneratorPlugin)
+  .aggregate(core, codeGenerator, codeGeneratorSbt2, codeGeneratorTesting, codeGeneratorPlugin)
   .settings(unusedCompileDependenciesFilter -= moduleFilter())
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -56,19 +66,36 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     tlVersionIntroduced := List("2.13", "3").map(_ -> "0.3.0").toMap
   )
 
-lazy val codeGenerator =
-  project
-    .in(file("codegen/generator"))
-    .settings(
-      name := "http4s-grpc-generator",
-      crossScalaVersions := Seq(scala212Version),
-      libraryDependencies ++= Seq(
-        "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
-      ),
-      unusedCompileDependenciesFilter -= moduleFilter(),
-      headerSources / excludeFilter := HiddenFileFilter || "*Http4sGrpcCodeGenerator.scala" || "*Http4sGrpcServicePrinter.scala",
-    )
-    .disablePlugins(ScalafixPlugin)
+lazy val codeGeneratorSettings = Seq(
+  name := "http4s-grpc-generator",
+  unusedCompileDependenciesFilter -= moduleFilter(),
+  headerSources / excludeFilter := HiddenFileFilter || "*Http4sGrpcCodeGenerator.scala" || "*Http4sGrpcServicePrinter.scala",
+)
+
+lazy val codeGenerator = project
+  .in(file("codegen/generator"))
+  .settings(codeGeneratorSettings)
+  .settings(
+    crossScalaVersions := Seq(scala212Version),
+    libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
+    ),
+  )
+  .disablePlugins(ScalafixPlugin)
+
+lazy val codeGeneratorSbt2 = project
+  .in(file("codegen/generator-sbt2"))
+  .settings(codeGeneratorSettings)
+  .settings(
+    Compile / scalaSource := (codeGenerator / Compile / scalaSource).value,
+    scalaVersion := scala3Version,
+    crossScalaVersions := Seq(scala3Version),
+    libraryDependencies ++= Seq(
+      "com.thesamet.scalapb" %% "compilerplugin" % scalapbSbt2Version
+    ),
+    tlVersionIntroduced := Map("3" -> "0.3.1"),
+  )
+  .disablePlugins(ScalafixPlugin)
 
 lazy val codegenFullName =
   "org.http4s.grpc.generator.Http4sGrpcCodeGenerator"
@@ -78,7 +105,18 @@ lazy val codeGeneratorPlugin = project
   .enablePlugins(BuildInfoPlugin, SbtPlugin)
   .settings(
     name := "sbt-http4s-grpc",
-    crossScalaVersions := Seq(scala212Version),
+    scalaVersion := scala212Version,
+    crossScalaVersions := Seq(scala212Version, scala3PluginVersion),
+    pluginCrossBuild / sbtVersion := (scalaBinaryVersion.value match {
+      case "2.12" => sbtVersion.value
+      case _ => sbt2Version
+    }),
+    tlJdkRelease := (scalaBinaryVersion.value match {
+      case "2.12" => Some(8)
+      case _ => Some(17)
+    }),
+    tlVersionIntroduced := Map("3" -> "0.3.1"),
+    tlFatalWarnings := false,
     buildInfoPackage := "org.http4s.grpc.sbt",
     buildInfoOptions += BuildInfoOption.PackagePrivate,
     buildInfoKeys := Seq[BuildInfoKey](
@@ -89,11 +127,38 @@ lazy val codeGeneratorPlugin = project
       "coreModule" -> (core.jvm / name).value,
       "codeGeneratorClass" -> codegenFullName,
     ),
-    libraryDependencies ++= Seq(
-      "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion
+    libraryDependencies ++= {
+      val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+      val scalaV = (update / scalaBinaryVersion).value
+      if (scalaV == "2.12")
+        Seq(
+          "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion,
+          Defaults.sbtPluginExtra("com.thesamet" % "sbt-protoc" % sbtProtocVersion, sbtV, scalaV),
+          Defaults.sbtPluginExtra(
+            "org.portable-scala" % "sbt-platform-deps" % sbtPlatformDepsVersion,
+            sbtV,
+            scalaV,
+          ),
+        )
+      else
+        Seq(
+          "com.thesamet.scalapb" %% "compilerplugin" % scalapbSbt2Version,
+          Defaults.sbtPluginExtra("com.thesamet" % "sbt-protoc" % sbtProtoc2Version, sbtV, scalaV),
+        )
+    },
+    scripted := scripted
+      .dependsOn(
+        core.jvm / publishLocal,
+        codeGenerator / publishLocal,
+        codeGeneratorSbt2 / publishLocal,
+      )
+      .evaluated,
+    scriptedBufferLog := false,
+    scriptedLaunchOpts ++= Seq(
+      "-Xmx1024M",
+      s"-Dplugin.version=${version.value}",
+      s"-Dscala.version=${(core.jvm / scalaVersion).value}",
     ),
-    addSbtPlugin("com.thesamet" % "sbt-protoc" % sbtProtocVersion),
-    addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % sbtPlatformDepsVersion),
     unusedCompileDependenciesFilter -= moduleFilter(),
     headerSources / excludeFilter := HiddenFileFilter || "*Http4sGrpcPlugin.scala",
   )
