@@ -53,6 +53,11 @@ object ScalaPb {
   def codecForGenerated[A <: GeneratedMessage](companion: GeneratedMessageCompanion[A]): Codec[A] =
     Codec[A](encoderForGenerated(companion), decoderForGenerated(companion))
 
+  def codecForTypeMapped[A <: GeneratedMessage, B](companion: GeneratedMessageCompanion[A])(implicit
+      typeMapper: TypeMapper[A, B]
+  ): Codec[B] =
+    codecForGenerated(companion).xmap(typeMapper.toCustom, typeMapper.toBase)
+
   implicit def byteVectorTypeMapper: TypeMapper[ByteString, ByteVector] =
     new TypeMapper[ByteString, ByteVector] {
       def toCustom(bs: ByteString) = ByteVector.view(bs.toByteArray())

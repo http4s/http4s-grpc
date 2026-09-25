@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+package hello.world;
+
+message Circle {
+  double radius = 1;
+}
+
+message Square {
+  double side = 1;
+}
+
+message Shape {
+  oneof sealed_value {
+    Circle circle = 1;
+    Square square = 2;
+  }
+}
+
+service TypeMappedService {
+  rpc Count (google.protobuf.Empty) returns (stream google.protobuf.Int64Value);
+  rpc Echo (google.protobuf.StringValue) returns (google.protobuf.StringValue);
+  rpc EchoShape (Shape) returns (Shape);
+}

@@ -40,6 +40,12 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   private[this] def rooted(name: String): String =
     if (name.startsWith("_root_.")) name else s"_root_.$name"
 
+  private[this] def codec(t: ExtendedMethodDescriptor#MethodTypeWrapper): String =
+    if (t.customScalaType.isDefined)
+      s"$Codec.codecForTypeMapped[${rooted(t.baseScalaType)}, ${rooted(t.scalaType)}](${rooted(t.baseScalaType)})"
+    else
+      s"$Codec.codecForGenerated(${rooted(t.scalaType)})"
+
   private[this] def generateScalaDoc(method: MethodDescriptor): PrinterEndo = { fp =>
     val lines = asScalaDocBlock(method.comment.map(_.split('\n').toSeq).getOrElse(Seq.empty))
     fp.add(lines: _*)
@@ -70,8 +76,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val encode = s"$Codec.codecForGenerated(${rooted(method.inputType.scalaType)})"
-    val decode = s"$Codec.codecForGenerated(${rooted(method.outputType.scalaType)})"
+    val encode = codec(method.inputType)
+    val decode = codec(method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(
@@ -91,8 +97,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     // val serviceCall = s"serviceImpl.${method.name}"
     // val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
 
-    val decode = s"$Codec.codecForGenerated(${method.inputType.scalaType})"
-    val encode = s"$Codec.codecForGenerated(${method.outputType.scalaType})"
+    val decode = codec(method.inputType)
+    val encode = codec(method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
 

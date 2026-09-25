@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package hello.world;
 
+import "google/protobuf/wrappers.proto";
+
 message TestMessage {
   string value = 1;
 }
@@ -11,4 +13,5 @@ service TestService {
   rpc ClientStreaming (stream TestMessage) returns (TestMessage);
   rpc ServerStreaming (TestMessage) returns (stream TestMessage);
   rpc BothStreaming (stream TestMessage) returns (stream TestMessage);
+  rpc Wrapped (google.protobuf.Int64Value) returns (google.protobuf.StringValue);
 }
