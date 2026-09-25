@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+option (scalapb.options).flat_package = true;
+
+message NoPackageMessage {
+  string value = 1;
+}
+
+service NoPackageService {
+  rpc Echo (NoPackageMessage) returns (NoPackageMessage);
+}

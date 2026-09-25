@@ -19,54 +19,26 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package hello.world
-
 import cats.effect.IO
-import cats.syntax.all._
-import com.google.protobuf.empty.Empty
-import fs2.Stream
 import munit._
 import org.http4s._
 import org.http4s.client.Client
 import org.scalacheck.effect.PropF.forAllF
 
-class TypeMappedServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
-  val impl: TypeMappedService[IO] = new TypeMappedService[IO] {
-    def count(request: Empty, ctx: Headers): Stream[IO, Long] =
-      Stream(1L, 2L, 3L)
-
-    def echo(request: String, ctx: Headers): IO[String] =
-      IO(request)
-
-    def echoShape(request: Shape, ctx: Headers): IO[Shape] =
-      IO(request)
-
-    def echoTemperature(request: Celsius, ctx: Headers): IO[Celsius] =
+class NoPackageServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
+  val impl: NoPackageService[IO] = new NoPackageService[IO] {
+    def echo(request: NoPackageMessage, ctx: Headers): IO[NoPackageMessage] =
       IO(request)
   }
 
-  val client: TypeMappedService[IO] = TypeMappedService.fromClient[IO](
-    Client.fromHttpApp(TypeMappedService.toRoutes(impl).orNotFound),
+  val client: NoPackageService[IO] = NoPackageService.fromClient[IO](
+    Client.fromHttpApp(NoPackageService.toRoutes(impl).orNotFound),
     Uri(),
   )
 
-  test("Int64Value as Long") {
-    client.count(Empty(), Headers.empty).compile.toList.assertEquals(List(1L, 2L, 3L))
-  }
-
-  test("StringValue as String") {
-    forAllF { (s: String) =>
-      client.echo(s, Headers.empty).assertEquals(s)
+  test("service in the empty package") {
+    forAllF { (value: String) =>
+      client.echo(NoPackageMessage(value), Headers.empty).assertEquals(NoPackageMessage(value))
     }
-  }
-
-  test("sealed oneof as sealed trait") {
-    List[Shape](Circle(1.5), Square(2.5), Shape.Empty).traverse_ { shape =>
-      client.echoShape(shape, Headers.empty).assertEquals(shape)
-    }
-  }
-
-  test("relative custom type") {
-    client.echoTemperature(Celsius(21.5), Headers.empty).assertEquals(Celsius(21.5))
   }
 }

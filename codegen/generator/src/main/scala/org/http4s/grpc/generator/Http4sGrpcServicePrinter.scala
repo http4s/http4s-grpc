@@ -21,6 +21,7 @@
 
 package org.http4s.grpc.generator
 
+import com.google.protobuf.Descriptors.Descriptor
 import com.google.protobuf.Descriptors.MethodDescriptor
 import com.google.protobuf.Descriptors.ServiceDescriptor
 import scalapb.compiler.DescriptorImplicits
@@ -37,14 +38,28 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   private[this] val servicePkgName: String =
     service.getFile.scalaPackage.fullName.stripPrefix("_root_.")
 
-  private[this] def rooted(name: String): String =
-    if (name.startsWith("_root_.")) name else s"_root_.$name"
+  private[this] def rooted(name: ScalaName): String =
+    if (name.emptyPackage) name.fullName else s"_root_.${name.fullName.stripPrefix("_root_.")}"
 
-  private[this] def codec(t: ExtendedMethodDescriptor#MethodTypeWrapper): String =
-    if (t.customScalaType.isDefined)
-      s"$Codec.codecForTypeMapped[${rooted(t.baseScalaType)}, ${rooted(t.scalaType)}](${rooted(t.baseScalaType)})"
-    else
-      s"$Codec.codecForGenerated(${rooted(t.scalaType)})"
+  private[this] val serviceType: String =
+    rooted(service.getFile.scalaPackage / service.getName)
+
+  private[this] def scalaType(
+      message: Descriptor,
+      t: ExtendedMethodDescriptor#MethodTypeWrapper,
+  ): String =
+    t.customScalaType.getOrElse(rooted(message.scalaType))
+
+  private[this] def codec(
+      message: Descriptor,
+      t: ExtendedMethodDescriptor#MethodTypeWrapper,
+  ): String = {
+    val baseType = rooted(message.scalaType)
+    t.customScalaType match {
+      case Some(customType) => s"$Codec.codecForTypeMapped[$baseType, $customType]($baseType)"
+      case None => s"$Codec.codecForGenerated($baseType)"
+    }
+  }
 
   private[this] def generateScalaDoc(method: MethodDescriptor): PrinterEndo = { fp =>
     val lines = asScalaDocBlock(method.comment.map(_.split('\n').toSeq).getOrElse(Seq.empty))
@@ -53,8 +68,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceMethodSignature(method: MethodDescriptor) = {
 
-    val scalaInType = rooted(method.inputType.scalaType)
-    val scalaOutType = rooted(method.outputType.scalaType)
+    val scalaInType = scalaType(method.getInputType, method.inputType)
+    val scalaOutType = scalaType(method.getOutputType, method.outputType)
     val ctx = s"ctx: $Ctx"
 
     s"def ${method.name}" + (method.streamType match {
@@ -76,8 +91,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     }
 
   private[this] def createClientCall(method: MethodDescriptor) = {
-    val encode = codec(method.inputType)
-    val decode = codec(method.outputType)
+    val encode = codec(method.getInputType, method.inputType)
+    val decode = codec(method.getOutputType, method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(
@@ -97,8 +112,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     // val serviceCall = s"serviceImpl.${method.name}"
     // val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
 
-    val decode = codec(method.inputType)
-    val encode = codec(method.outputType)
+    val decode = codec(method.getInputType, method.inputType)
+    val encode = codec(method.getOutputType, method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
 
@@ -148,7 +163,7 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri): $serviceName[F] = fromClient(client, baseUri, $DefaultMaxMessageSize)"
     ).newline
       .add(
-        s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri, maxMessageSize: Int): $serviceName[F] = new _root_.$servicePkgName.$serviceName[F] {"
+        s"def fromClient[F[_]: $Concurrent](client: $Client[F], baseUri: $Uri, maxMessageSize: Int): $serviceName[F] = new $serviceType[F] {"
       )
       .indent
       .call(serviceMethodImplementations)
@@ -157,10 +172,10 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceBinding: PrinterEndo =
     _.add(
-      s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F]): $HttpRoutes[F] = toRoutes(serviceImpl, $DefaultMaxMessageSize)"
+      s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceType[F]): $HttpRoutes[F] = toRoutes(serviceImpl, $DefaultMaxMessageSize)"
     ).newline
       .add(
-        s"def toRoutes[F[_]: $Temporal](serviceImpl: _root_.$servicePkgName.$serviceName[F], maxMessageSize: Int): $HttpRoutes[F] = {"
+        s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceType[F], maxMessageSize: Int): $HttpRoutes[F] = {"
       )
       .indent
       .call(serviceBindingImplementations)
@@ -171,7 +186,8 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   def printService(printer: FunctionalPrinter): FunctionalPrinter =
     printer
-      .add(s"package $servicePkgName", "", "import _root_.cats.syntax.all._", "")
+      .when(servicePkgName.nonEmpty)(_.add(s"package $servicePkgName", ""))
+      .add("import _root_.cats.syntax.all._", "")
       .call(serviceTrait)
       .newline
       .call(serviceObject)
