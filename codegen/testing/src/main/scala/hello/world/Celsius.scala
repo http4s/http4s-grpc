@@ -25,7 +25,7 @@ import scalapb.TypeMapper
 
 final case class Celsius(degrees: Double)
 
-object Celsius {
-  implicit val typeMapper: TypeMapper[Temperature, Celsius] =
+object TypeMappers {
+  implicit val celsiusTypeMapper: TypeMapper[Temperature, Celsius] =
     TypeMapper[Temperature, Celsius](t => Celsius(t.degrees))(c => Temperature(c.degrees))
 }

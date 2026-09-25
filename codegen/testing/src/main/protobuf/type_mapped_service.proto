@@ -6,6 +6,8 @@ import "scalapb/scalapb.proto";
 
 package hello.world;
 
+option (scalapb.options).import = "hello.world.TypeMappers._";
+
 message Circle {
   double radius = 1;
 }

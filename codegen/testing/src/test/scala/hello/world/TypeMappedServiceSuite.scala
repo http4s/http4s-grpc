@@ -66,7 +66,7 @@ class TypeMappedServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite 
     }
   }
 
-  test("relative custom type") {
+  test("relative custom type with imported TypeMapper") {
     client.echoTemperature(Celsius(21.5), Headers.empty).assertEquals(Celsius(21.5))
   }
 }

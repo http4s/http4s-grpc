@@ -29,6 +29,7 @@ import scalapb.compiler.FunctionalPrinter
 import scalapb.compiler.FunctionalPrinter.PrinterEndo
 import scalapb.compiler.ProtobufGenerator.asScalaDocBlock
 import scalapb.compiler.StreamType
+import scala.jdk.CollectionConverters._
 
 class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplicits) {
   import di._
@@ -187,7 +188,9 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
   def printService(printer: FunctionalPrinter): FunctionalPrinter =
     printer
       .when(servicePkgName.nonEmpty)(_.add(s"package $servicePkgName", ""))
-      .add("import _root_.cats.syntax.all._", "")
+      .add("import _root_.cats.syntax.all._")
+      .print(service.getFile.scalaOptions.getImportList.asScala)((p, i) => p.add(s"import $i"))
+      .newline
       .call(serviceTrait)
       .newline
       .call(serviceObject)
