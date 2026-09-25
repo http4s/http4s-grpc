@@ -124,6 +124,12 @@ lazy val codeGeneratorTesting = crossProject(JVMPlatform, JSPlatform, NativePlat
     githubWorkflowArtifactUpload := false,
     unusedCompileDependenciesFilter -= moduleFilter(),
   )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-ember-server" % http4sVersion % Test,
+      "org.http4s" %% "http4s-ember-client" % http4sVersion % Test,
+    )
+  )
   .nativeSettings(
     tlVersionIntroduced := List("2.13", "3").map(_ -> "0.3.0").toMap
   )

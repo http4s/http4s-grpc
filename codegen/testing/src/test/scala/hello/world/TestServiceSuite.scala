@@ -21,9 +21,13 @@
 
 package hello.world
 
+import cats.effect.Deferred
 import cats.effect.IO
+import cats.effect.Resource
 import cats.syntax.all._
+import fs2.Chunk
 import fs2.Stream
+import fs2.concurrent.Channel
 import munit._
 import org.http4s._
 import org.http4s.client.Client
@@ -35,6 +39,8 @@ import org.http4s.syntax.all._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck._
 import org.scalacheck.effect.PropF.forAllF
+
+import scala.concurrent.duration._
 
 class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
   val impl: TestService[IO] = new TestService[IO] {
@@ -63,8 +69,14 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     } yield TestMessage(a, b, c)
   )
 
+  private def rechunkedClient(app: HttpApp[IO]): Client[IO] =
+    Client.fromHttpApp(HttpApp[IO] { req =>
+      app(req.withBodyStream(req.body.rechunkRandomly()))
+        .map(resp => resp.withBodyStream(resp.body.rechunkRandomly()))
+    })
+
   val client: TestService[IO] = TestService.fromClient[IO](
-    Client.fromHttpApp(TestService.toRoutes(impl).orNotFound),
+    rechunkedClient(TestService.toRoutes(impl).orNotFound),
     Uri(),
   )
 
@@ -248,5 +260,80 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
         .map(_.leftMap(_.status))
         .assertEquals(Either.left(status))
     }
+  }
+
+  test("Server rejects messages larger than maxMessageSize") {
+    val client = TestService.fromClient[IO](
+      rechunkedClient(TestService.toRoutes(impl, 16).orNotFound),
+      Uri(),
+    )
+
+    client
+      .noStreaming(TestMessage("a" * 32, 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+  }
+
+  test("Server rejects oversized messages without buffering them") {
+    val client = rechunkedClient(TestService.toRoutes(impl).orNotFound)
+    val body =
+      Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0).take(8L * 1024 * 1024)
+
+    client
+      .run(
+        Request[IO](Method.POST, uri"/hello.world.TestService/noStreaming")
+          .withHeaders("Content-Type" -> "application/grpc")
+          .withBodyStream(body)
+      )
+      .use(resp => resp.body.compile.drain >> resp.trailerHeaders)
+      .map(_.get[org.http4s.grpc.codecs.NamedHeaders.GrpcStatus].map(_.statusCode))
+      .assertEquals(Some(GrpcStatusCode.ResourceExhausted))
+  }
+
+  test("Client rejects messages larger than maxMessageSize") {
+    val client = TestService.fromClient[IO](
+      rechunkedClient(TestService.toRoutes(impl).orNotFound),
+      Uri(),
+      16,
+    )
+
+    client
+      .noStreaming(TestMessage("a" * 32, 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+  }
+
+  /*
+   * Like Client.fromHttpApp, but delivers the response like HTTP/2:
+   * the body in 16 KiB frames through a 64 KiB receive window, and
+   * the trailers after the last frame.
+   */
+  private def flowControlledClient(app: HttpApp[IO]): Client[IO] =
+    Client { req =>
+      for {
+        resp <- Resource.eval(app(req))
+        window <- Resource.eval(Channel.bounded[IO, Chunk[Byte]](4))
+        trailers <- Resource.eval(Deferred[IO, Headers])
+        _ <- (resp.body.chunkLimit(16 * 1024).through(window.sendAll).compile.drain >>
+          resp.trailerHeaders.flatMap(trailers.complete)).background
+      } yield resp.withBodyStream(window.stream.unchunks).withTrailerHeaders(trailers.get)
+    }
+
+  test("Client rejects oversized messages when the transport applies flow control") {
+    val client =
+      TestService.fromClient[IO](
+        flowControlledClient(TestService.toRoutes(impl).orNotFound),
+        Uri(),
+        16 * 1024,
+      )
+
+    client
+      .noStreaming(TestMessage("a" * (256 * 1024), 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .timeout(10.seconds)
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
   }
 }
