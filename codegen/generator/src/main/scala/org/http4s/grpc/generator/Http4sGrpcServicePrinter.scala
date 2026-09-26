@@ -67,11 +67,11 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
     fp.add(lines: _*)
   }
 
-  private[this] def serviceMethodSignature(method: MethodDescriptor) = {
+  private[this] def serviceMethodSignature(method: MethodDescriptor, ctxType: String) = {
 
     val scalaInType = scalaType(method.getInputType, method.inputType)
     val scalaOutType = scalaType(method.getOutputType, method.outputType)
-    val ctx = s"ctx: $Ctx"
+    val ctx = s"ctx: $ctxType"
 
     s"def ${method.name}" + (method.streamType match {
       case StreamType.Unary => s"(request: $scalaInType, $ctx): F[$scalaOutType]"
@@ -91,44 +91,60 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       case StreamType.Bidirectional => "streamToStream"
     }
 
-  private[this] def createClientCall(method: MethodDescriptor) = {
+  private[this] def createClientCall(method: MethodDescriptor, headers: String) = {
     val encode = codec(method.getInputType, method.inputType)
     val decode = codec(method.getOutputType, method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
     s"""$ClientGrpc.${handleMethod(
         method
-      )}($encode, $decode, "$serviceName", "$methodName", maxMessageSize)(client, baseUri)(request, ctx)"""
+      )}($encode, $decode, "$serviceName", "$methodName", maxMessageSize)(client, baseUri)(request, $headers)"""
   }
 
   private[this] def serviceMethodImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    p.add(serviceMethodSignature(method) + " = {")
+    p.add(serviceMethodSignature(method, Headers) + " = {")
       .indent
-      .add(s"${createClientCall(method)}")
+      .add(s"${createClientCall(method, "ctx")}")
       .outdent
       .add("}")
   }
 
-  private[this] def serviceBindingImplementation(method: MethodDescriptor): PrinterEndo = { p =>
-    // val serviceCall = s"serviceImpl.${method.name}"
-    // val eval = if (method.isServerStreaming) s"$Stream.eval(mkCtx(m))" else "mkCtx(m)"
+  private[this] def contextServiceMethodImplementation(method: MethodDescriptor): PrinterEndo = {
+    p =>
+      val call = createClientCall(method, "_")
+      val impl =
+        if (method.isServerStreaming) s"$Stream.eval(mkHeaders(ctx)).flatMap($call)"
+        else s"mkHeaders(ctx).flatMap($call)"
 
+      p.add(serviceMethodSignature(method, "A") + " = {")
+        .indent
+        .add(impl)
+        .outdent
+        .add("}")
+  }
+
+  private[this] def serviceBindingImplementation(method: MethodDescriptor): PrinterEndo = { p =>
     val decode = codec(method.getInputType, method.inputType)
     val encode = codec(method.getOutputType, method.outputType)
     val serviceName = method.getService.getFullName
     val methodName = method.getName
 
-    p.add(s""".combineK($ServerGrpc.${handleMethod(
-        method
-      )}($decode, $encode, "$serviceName", "$methodName", maxMessageSize)(serviceImpl.${method.name}(_, _)))""")
+    p.add(
+      s""".combineK($ServerGrpc.${handleMethod(
+          method
+        )}($decode, $encode, "$serviceName", "$methodName", maxMessageSize, mkCtx)(serviceImpl.${method.name}(_, _)))"""
+    )
   }
 
   private[this] def serviceMethods: PrinterEndo = _.call(service.methods.map { method =>
-    generateScalaDoc(method).andThen(_.add(serviceMethodSignature(method)).newline)
+    generateScalaDoc(method).andThen(_.add(serviceMethodSignature(method, "A")).newline)
   }: _*)
 
   private[this] def serviceMethodImplementations: PrinterEndo =
     _.call(service.methods.map(serviceMethodImplementation): _*)
+
+  private[this] def contextServiceMethodImplementations: PrinterEndo =
+    _.call(service.methods.map(contextServiceMethodImplementation): _*)
 
   private[this] def serviceBindingImplementations: PrinterEndo =
     _.add(s"$ServerGrpc.precondition[F]").indent
@@ -143,7 +159,11 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceTrait: PrinterEndo =
     _.call(generateScalaDoc(service))
-      .add(s"trait $serviceName[F[_]] {")
+      .add(s"trait $serviceName[F[_]] extends $serviceType.WithContext[F, $Headers]")
+
+  private[this] def contextServiceTrait: PrinterEndo =
+    _.call(generateScalaDoc(service))
+      .add(s"trait WithContext[F[_], A] {")
       .newline
       .indent
       .call(serviceMethods)
@@ -152,7 +172,11 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
 
   private[this] def serviceObject: PrinterEndo =
     _.add(s"object $serviceName {").indent.newline
+      .call(contextServiceTrait)
+      .newline
       .call(serviceClient)
+      .newline
+      .call(contextServiceClient)
       .newline
       .call(serviceBinding)
       .outdent
@@ -171,12 +195,32 @@ class Http4sGrpcServicePrinter(service: ServiceDescriptor, di: DescriptorImplici
       .outdent
       .add("}")
 
+  private[this] def contextServiceClient: PrinterEndo =
+    _.add(
+      s"def fromClient[F[_]: $Concurrent, A](client: $Client[F], baseUri: $Uri, mkHeaders: A => F[$Headers]): $serviceType.WithContext[F, A] = fromClient(client, baseUri, mkHeaders, $DefaultMaxMessageSize)"
+    ).newline
+      .add(
+        s"def fromClient[F[_]: $Concurrent, A](client: $Client[F], baseUri: $Uri, mkHeaders: A => F[$Headers], maxMessageSize: Int): $serviceType.WithContext[F, A] = new $serviceType.WithContext[F, A] {"
+      )
+      .indent
+      .call(contextServiceMethodImplementations)
+      .outdent
+      .add("}")
+
   private[this] def serviceBinding: PrinterEndo =
     _.add(
       s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceType[F]): $HttpRoutes[F] = toRoutes(serviceImpl, $DefaultMaxMessageSize)"
     ).newline
       .add(
-        s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceType[F], maxMessageSize: Int): $HttpRoutes[F] = {"
+        s"def toRoutes[F[_]: $Temporal](serviceImpl: $serviceType[F], maxMessageSize: Int): $HttpRoutes[F] = toRoutes[F, $Headers](serviceImpl, (request: $Request[F]) => request.headers.pure[F], maxMessageSize)"
+      )
+      .newline
+      .add(
+        s"def toRoutes[F[_]: $Temporal, A](serviceImpl: $serviceType.WithContext[F, A], mkCtx: $Request[F] => F[A]): $HttpRoutes[F] = toRoutes(serviceImpl, mkCtx, $DefaultMaxMessageSize)"
+      )
+      .newline
+      .add(
+        s"def toRoutes[F[_]: $Temporal, A](serviceImpl: $serviceType.WithContext[F, A], mkCtx: $Request[F] => F[A], maxMessageSize: Int): $HttpRoutes[F] = {"
       )
       .indent
       .call(serviceBindingImplementations)
@@ -208,7 +252,8 @@ object Http4sGrpcServicePrinter {
 
     // /
 
-    val Ctx = s"$http4sPkg.Headers"
+    val Headers = s"$http4sPkg.Headers"
+    val Request = s"$http4sPkg.Request"
 
     val Concurrent = s"$effPkg.Concurrent"
     val Temporal = s"$effPkg.Temporal"
