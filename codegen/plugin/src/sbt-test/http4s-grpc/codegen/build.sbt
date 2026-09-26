@@ -6,6 +6,9 @@ Compile / PB.targets ++= Seq[protocbridge.Target](
   scalapb.gen(grpc = false) -> (Compile / sourceManaged).value / "scalapb"
 )
 
+libraryDependencies +=
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
+
 // on sbt 2 the ScalaPB 1.0 runtime evicts the 0.11 runtime core depends on
 TaskKey[Unit]("checkRuntime") := {
   val revisions = (Compile / update).value.allModules.collect {

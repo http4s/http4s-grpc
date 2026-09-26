@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+import "scalapb/scalapb.proto";
+
+package hello.world;
+
+option (scalapb.options).import = "hello.world.TypeMappers._";
+
+message Circle {
+  double radius = 1;
+}
+
+message Square {
+  double side = 1;
+}
+
+message Shape {
+  oneof sealed_value {
+    Circle circle = 1;
+    Square square = 2;
+  }
+}
+
+message Temperature {
+  option (scalapb.message).type = "Celsius";
+
+  double degrees = 1;
+}
+
+service TypeMappedService {
+  rpc Count (google.protobuf.Empty) returns (stream google.protobuf.Int64Value);
+  rpc Echo (google.protobuf.StringValue) returns (google.protobuf.StringValue);
+  rpc EchoShape (Shape) returns (Shape);
+  rpc EchoTemperature (Temperature) returns (Temperature);
+}
