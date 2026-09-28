@@ -21,6 +21,7 @@
 
 package org.http4s.grpc
 
+import cats.Applicative
 import cats.Functor
 import cats.Monad
 import cats.effect._
@@ -67,6 +68,18 @@ object ServerGrpc {
       maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (A, Headers) => F[B]
+  ): HttpRoutes[F] =
+    unaryToUnary(decode, encode, serviceName, methodName, maxMessageSize, headers[F])(f)
+
+  def unaryToUnary[F[_]: Temporal, A, B, C]( // Stuff We can provide via codegen\
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+      maxMessageSize: Int,
+      mkCtx: Request[F] => F[C],
+  )( // Stuff we apply at invocation
+      f: (A, C) => F[B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
@@ -76,7 +89,7 @@ object ServerGrpc {
       } yield {
         val body = Stream
           .eval(codecs.Messages.decodeSingle(decode, maxMessageSize)(req.body))
-          .evalMap(f(_, req.headers))
+          .evalMap(a => mkCtx(req).flatMap(f(a, _)))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
@@ -110,6 +123,18 @@ object ServerGrpc {
       maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (A, Headers) => Stream[F, B]
+  ): HttpRoutes[F] =
+    unaryToStream(decode, encode, serviceName, methodName, maxMessageSize, headers[F])(f)
+
+  def unaryToStream[F[_]: Temporal, A, B, C]( // Stuff We can provide via codegen\
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+      maxMessageSize: Int,
+      mkCtx: Request[F] => F[C],
+  )( // Stuff we apply at invocation
+      f: (A, C) => Stream[F, B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
@@ -119,7 +144,7 @@ object ServerGrpc {
       } yield {
         val body = Stream
           .eval(codecs.Messages.decodeSingle(decode, maxMessageSize)(req.body))
-          .flatMap(f(_, req.headers))
+          .flatMap(a => Stream.eval(mkCtx(req)).flatMap(f(a, _)))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
@@ -152,6 +177,18 @@ object ServerGrpc {
       maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (Stream[F, A], Headers) => F[B]
+  ): HttpRoutes[F] =
+    streamToUnary(decode, encode, serviceName, methodName, maxMessageSize, headers[F])(f)
+
+  def streamToUnary[F[_]: Temporal, A, B, C]( // Stuff We can provide via codegen\
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+      maxMessageSize: Int,
+      mkCtx: Request[F] => F[C],
+  )( // Stuff we apply at invocation
+      f: (Stream[F, A], C) => F[B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
@@ -161,7 +198,7 @@ object ServerGrpc {
 
       } yield {
         val body = Stream
-          .eval(f(codecs.Messages.decode(decode, maxMessageSize)(req.body), req.headers))
+          .eval(mkCtx(req).flatMap(f(codecs.Messages.decode(decode, maxMessageSize)(req.body), _)))
           .flatMap(codecs.Messages.encodeSingle(encode)(_))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
@@ -197,6 +234,18 @@ object ServerGrpc {
       maxMessageSize: Int,
   )( // Stuff we apply at invocation
       f: (Stream[F, A], Headers) => Stream[F, B]
+  ): HttpRoutes[F] =
+    streamToStream(decode, encode, serviceName, methodName, maxMessageSize, headers[F])(f)
+
+  def streamToStream[F[_]: Temporal, A, B, C]( // Stuff We can provide via codegen\
+      decode: Decoder[A],
+      encode: Encoder[B],
+      serviceName: String,
+      methodName: String,
+      maxMessageSize: Int,
+      mkCtx: Request[F] => F[C],
+  )( // Stuff we apply at invocation
+      f: (Stream[F, A], C) => Stream[F, B]
   ): HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / sN / mN if sN === serviceName && mN === methodName =>
       for {
@@ -205,7 +254,9 @@ object ServerGrpc {
         timeout = req.headers.get[NamedHeaders.GrpcTimeout]
       } yield {
 
-        val body = f(codecs.Messages.decode(decode, maxMessageSize)(req.body), req.headers)
+        val body = Stream
+          .eval(mkCtx(req))
+          .flatMap(f(codecs.Messages.decode(decode, maxMessageSize)(req.body), _))
           .through(codecs.Messages.encode(encode))
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
@@ -264,6 +315,9 @@ object ServerGrpc {
         )
         .pure[F]
   }
+
+  private def headers[F[_]: Applicative]: Request[F] => F[Headers] =
+    _.headers.pure[F]
 
   private def timeoutStream[F[_]: Temporal, A](
       s: Stream[F, A]

@@ -4,7 +4,7 @@ inThisBuild(
   Seq(
     crossScalaVersions := Seq(scala213Version, scala3Version),
     scalaVersion := scala213Version,
-    tlBaseVersion := "0.3",
+    tlBaseVersion := "0.4",
     organizationName := "Christopher Davenport",
     startYear := Some(2023),
     licenses := Seq(License.MIT),
@@ -93,7 +93,7 @@ lazy val codeGeneratorSbt2 = project
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "compilerplugin" % scalapbSbt2Version
     ),
-    tlVersionIntroduced := Map("3" -> "0.3.1"),
+    tlVersionIntroduced := Map("3" -> "0.4.0"),
   )
   .disablePlugins(ScalafixPlugin)
 
@@ -115,7 +115,7 @@ lazy val codeGeneratorPlugin = project
       case "2.12" => Some(8)
       case _ => Some(17)
     }),
-    tlVersionIntroduced := Map("3" -> "0.3.1"),
+    tlVersionIntroduced := Map("3" -> "0.4.0"),
     tlFatalWarnings := false,
     buildInfoPackage := "org.http4s.grpc.sbt",
     buildInfoOptions += BuildInfoOption.PackagePrivate,
