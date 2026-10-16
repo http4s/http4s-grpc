@@ -36,6 +36,8 @@ import org.http4s.grpc.GrpcStatus._
 import org.http4s.grpc.GrpcStatusCode
 import org.http4s.grpc.GrpcStatusException
 import org.http4s.grpc.ServerGrpc
+import org.http4s.grpc.codecs.Messages
+import org.http4s.grpc.codecs.ScalaPb
 import org.http4s.syntax.all._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck._
@@ -171,6 +173,9 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
     val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
     val methods =
       List("noStreaming", "clientStreaming", "serverStreaming", "bothStreaming", "missingMethod")
+    val message = Messages.encodeSingle[IO, TestMessage](ScalaPb.codecForGenerated(TestMessage))(
+      TestMessage("a", 1, None)
+    )
 
     methods
       .traverse { method =>
@@ -178,7 +183,7 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
           .run(
             Request[IO](Method.POST, uri"/hello.world.TestService" / method)
               .withHeaders("Content-Type" -> "application/grpc")
-              .withBodyStream(Stream[IO, Byte](0, 0, 0, 0, 0)) // an empty message
+              .withBodyStream(message)
           )
           .use(resp => resp.body.compile.drain.as(method -> resp.httpVersion))
       }

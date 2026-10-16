@@ -33,6 +33,8 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.grpc.GrpcStatusCode
 import org.http4s.grpc.GrpcStatusException
+import org.http4s.grpc.codecs.Messages
+import org.http4s.grpc.codecs.ScalaPb
 import org.http4s.syntax.all._
 
 import scala.concurrent.duration._
@@ -99,13 +101,16 @@ class EmberSuite extends CatsEffectSuite {
           .build
         client <- EmberClientBuilder.default[IO].build
       } yield (client, server.baseUri)
+    val message = Messages.encodeSingle[IO, TestMessage](ScalaPb.codecForGenerated(TestMessage))(
+      TestMessage("a", 1, None)
+    )
 
     http1.use { case (client, uri) =>
       client
         .run(
           Request[IO](Method.POST, uri / "hello.world.TestService" / "noStreaming")
             .withHeaders("Content-Type" -> "application/grpc")
-            .withBodyStream(Stream[IO, Byte](0, 0, 0, 0, 0)) // an empty message
+            .withBodyStream(message)
         )
         .use(resp => resp.body.compile.drain.as(resp.httpVersion))
         .timeout(10.seconds)
