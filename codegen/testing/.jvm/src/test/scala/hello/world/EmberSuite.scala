@@ -33,6 +33,8 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.grpc.GrpcStatusCode
 import org.http4s.grpc.GrpcStatusException
+import org.http4s.grpc.codecs.Messages
+import org.http4s.grpc.codecs.ScalaPb
 import org.http4s.syntax.all._
 
 import scala.concurrent.duration._
@@ -84,6 +86,35 @@ class EmberSuite extends CatsEffectSuite {
           .map(_.a.length)
           .timeout(10.seconds)
           .assertEquals(MiB)
+    }
+  }
+
+  test("Server responds to HTTP/1.1 requests with an HTTP/1.1 status line") {
+    val http1 =
+      for {
+        server <- EmberServerBuilder
+          .default[IO]
+          .withHost(ipv4"127.0.0.1")
+          .withPort(port"0")
+          .withShutdownTimeout(1.second)
+          .withHttpApp(TestService.toRoutes(impl).orNotFound)
+          .build
+        client <- EmberClientBuilder.default[IO].build
+      } yield (client, server.baseUri)
+    val message = Messages.encodeSingle[IO, TestMessage](ScalaPb.codecForGenerated(TestMessage))(
+      TestMessage("a", 1, None)
+    )
+
+    http1.use { case (client, uri) =>
+      client
+        .run(
+          Request[IO](Method.POST, uri / "hello.world.TestService" / "noStreaming")
+            .withHeaders("Content-Type" -> "application/grpc")
+            .withBodyStream(message)
+        )
+        .use(resp => resp.body.compile.drain.as(resp.httpVersion))
+        .timeout(10.seconds)
+        .assertEquals(HttpVersion.`HTTP/1.1`)
     }
   }
 }

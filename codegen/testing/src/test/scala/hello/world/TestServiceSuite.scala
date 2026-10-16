@@ -35,6 +35,9 @@ import org.http4s.grpc.GrpcStatus
 import org.http4s.grpc.GrpcStatus._
 import org.http4s.grpc.GrpcStatusCode
 import org.http4s.grpc.GrpcStatusException
+import org.http4s.grpc.ServerGrpc
+import org.http4s.grpc.codecs.Messages
+import org.http4s.grpc.codecs.ScalaPb
 import org.http4s.syntax.all._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck._
@@ -164,6 +167,39 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       .assertEquals(
         Some(org.http4s.grpc.codecs.NamedHeaders.GrpcStatus(Unimplemented.code))
       )
+  }
+
+  test("Routes respond to HTTP/1.1 requests with HTTP/1.1") {
+    val client = Client.fromHttpApp(TestService.toRoutes(impl).orNotFound)
+    val methods =
+      List("noStreaming", "clientStreaming", "serverStreaming", "bothStreaming", "missingMethod")
+    val message = Messages.encodeSingle[IO, TestMessage](ScalaPb.codecForGenerated(TestMessage))(
+      TestMessage("a", 1, None)
+    )
+
+    methods
+      .traverse { method =>
+        client
+          .run(
+            Request[IO](Method.POST, uri"/hello.world.TestService" / method)
+              .withHeaders("Content-Type" -> "application/grpc")
+              .withBodyStream(message)
+          )
+          .use(resp => resp.body.compile.drain.as(method -> resp.httpVersion))
+      }
+      .assertEquals(methods.map(_ -> HttpVersion.`HTTP/1.1`))
+  }
+
+  test("closeGrpcRoutes responds to HTTP/1.1 requests with HTTP/1.1") {
+    val requests = List(
+      Request[IO](Method.POST, uri"/unknown.Service"),
+      Request[IO](Method.GET, uri"/unknown.Service"),
+      Request[IO](Method.POST, uri"/unknown.Service/unknownMethod"),
+    )
+
+    requests
+      .traverse(req => ServerGrpc.closeGrpcRoutes(req).map(_.httpVersion))
+      .assertEquals(requests.as(HttpVersion.`HTTP/1.1`))
   }
 
   test("Client fails with initial failure") {

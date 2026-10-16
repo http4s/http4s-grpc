@@ -95,7 +95,7 @@ object ServerGrpc {
           .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
-        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+        Response[F](Status.Ok)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
             SharedGrpc.ContentType,
@@ -149,7 +149,7 @@ object ServerGrpc {
           .through(timeoutStream(_)(timeout.map(_.duration)))
           .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
-        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+        Response[F](Status.Ok)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
             SharedGrpc.ContentType,
@@ -204,7 +204,7 @@ object ServerGrpc {
           .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
-        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+        Response[F](Status.Ok)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
             SharedGrpc.ContentType,
@@ -262,7 +262,7 @@ object ServerGrpc {
           .onFinalizeCaseWeak(updateStatus(status))
           .mask // ensures body closure without rst-stream
 
-        Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+        Response[F](Status.Ok)
           .putHeaders(
             Trailer(cats.data.NonEmptyList.of(CIString("grpc-status"))),
             SharedGrpc.ContentType,
@@ -276,7 +276,7 @@ object ServerGrpc {
 
   def methodNotFoundRoute[F[_]: Concurrent](serviceName: String) = HttpRoutes.of[F] {
     case POST -> Root / sN / mN if sN === serviceName =>
-      Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+      Response[F](Status.Ok)
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
@@ -288,7 +288,7 @@ object ServerGrpc {
 
   def closeGrpcRoutes[F[_]: Concurrent](req: Request[F]): F[Response[F]] = req match {
     case POST -> Root / sN =>
-      Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+      Response[F](Status.Ok)
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
@@ -297,7 +297,7 @@ object ServerGrpc {
         )
         .pure[F]
     case other -> Root / _ =>
-      Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+      Response[F](Status.Ok)
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
@@ -306,7 +306,7 @@ object ServerGrpc {
         )
         .pure[F]
     case _ =>
-      Response[F](Status.Ok, HttpVersion.`HTTP/2`)
+      Response[F](Status.Ok)
         .putHeaders(
           SharedGrpc.ContentType,
           SharedGrpc.TE,
