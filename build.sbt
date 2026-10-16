@@ -27,8 +27,7 @@ val http4sVersion = "0.23.38"
 val munitCatsEffectVersion = "2.2.1"
 val sbt2Version = "2.0.0"
 val sbtPlatformDepsVersion = "1.0.2"
-val sbtProtoc2Version = "1.1.0-RC2"
-val sbtProtocVersion = "1.0.8"
+val sbtProtocVersion = "1.1.0-RC2"
 val scala212Version = "2.12.21"
 val scala213Version = "2.13.18"
 val scala3PluginVersion = "3.8.4"
@@ -127,13 +126,13 @@ lazy val codeGeneratorPlugin = project
       "coreModule" -> (core.jvm / name).value,
       "codeGeneratorClass" -> codegenFullName,
     ),
+    addSbtPlugin("com.thesamet" % "sbt-protoc" % sbtProtocVersion),
     libraryDependencies ++= {
       val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
       val scalaV = (update / scalaBinaryVersion).value
       if (scalaV == "2.12")
         Seq(
           "com.thesamet.scalapb" %% "compilerplugin" % scalapbVersion,
-          Defaults.sbtPluginExtra("com.thesamet" % "sbt-protoc" % sbtProtocVersion, sbtV, scalaV),
           Defaults.sbtPluginExtra(
             "org.portable-scala" % "sbt-platform-deps" % sbtPlatformDepsVersion,
             sbtV,
@@ -142,8 +141,7 @@ lazy val codeGeneratorPlugin = project
         )
       else
         Seq(
-          "com.thesamet.scalapb" %% "compilerplugin" % scalapbSbt2Version,
-          Defaults.sbtPluginExtra("com.thesamet" % "sbt-protoc" % sbtProtoc2Version, sbtV, scalaV),
+          "com.thesamet.scalapb" %% "compilerplugin" % scalapbSbt2Version
         )
     },
     scripted := scripted
