@@ -30,8 +30,21 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         scala: [2.13, 3]
-        java: [temurin@17]
+        java: [temurin@17, temurin@21, temurin@25]
         project: [http4s-grpcJVM, http4s-grpcJS, http4s-grpcNative]
+        exclude:
+          - scala: 3
+            java: temurin@21
+          - scala: 3
+            java: temurin@25
+          - project: http4s-grpcJS
+            java: temurin@21
+          - project: http4s-grpcJS
+            java: temurin@25
+          - project: http4s-grpcNative
+            java: temurin@21
+          - project: http4s-grpcNative
+            java: temurin@25
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -54,6 +67,32 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Check that workflows are up to date
@@ -92,7 +131,7 @@ jobs:
 
       - name: Scripted tests
         if: matrix.project == 'http4s-grpcJVM' && matrix.java == 'temurin@17'
-        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' codeGeneratorPlugin/scripted
+        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' +codeGeneratorPlugin/scripted
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
@@ -138,6 +177,32 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Download target directories (2.13, http4s-grpcJVM)
@@ -254,6 +319,32 @@ jobs:
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
@@ -287,6 +378,32 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Generate site

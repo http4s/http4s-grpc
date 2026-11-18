@@ -11,9 +11,16 @@ inThisBuild(
     developers := List(
       tlGitHubDev("christopherdavenport", "Christopher Davenport")
     ),
-    githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17")),
+    githubWorkflowJavaVersions := Seq(
+      JavaSpec.temurin("17"),
+      JavaSpec.temurin("21"),
+      JavaSpec.temurin("25"),
+    ),
+    githubWorkflowGeneratedCI ~= (_.map { job =>
+      if (job.id == "publish") job.withJavas(List(JavaSpec.temurin("17"))) else job
+    }),
     githubWorkflowBuildPostamble += WorkflowStep.Sbt(
-      List("codeGeneratorPlugin/scripted"),
+      List("+codeGeneratorPlugin/scripted"),
       name = Some("Scripted tests"),
       cond = Some("matrix.project == 'http4s-grpcJVM' && matrix.java == 'temurin@17'"),
     ),
@@ -25,12 +32,12 @@ val catsVersion = "2.13.0"
 val fs2Version = "3.14.0"
 val http4sVersion = "0.23.38"
 val munitCatsEffectVersion = "2.2.1"
-val sbt2Version = "2.0.0"
+val sbt2Version = "2.1.0"
 val sbtPlatformDepsVersion = "1.0.2"
 val sbtProtocVersion = "1.1.0-RC2"
 val scala212Version = "2.12.21"
 val scala213Version = "2.13.18"
-val scala3PluginVersion = "3.8.4"
+val scala3PluginVersion = "3.9.0"
 val scala3Version = "3.3.9"
 val scalaCheckEffectMunitVersion = "2.1.0"
 val scalapbSbt2Version = "1.0.0-alpha.6"
@@ -106,8 +113,11 @@ lazy val codeGeneratorPlugin = project
     name := "sbt-http4s-grpc",
     scalaVersion := scala212Version,
     crossScalaVersions := Seq(scala212Version, scala3PluginVersion),
+    scalacOptions ++= {
+      if (scalaBinaryVersion.value == "2.12") Seq("-Xsource:3") else Nil
+    },
     pluginCrossBuild / sbtVersion := (scalaBinaryVersion.value match {
-      case "2.12" => sbtVersion.value
+      case "2.12" => "1.13.1"
       case _ => sbt2Version
     }),
     tlJdkRelease := (scalaBinaryVersion.value match {
