@@ -11,16 +11,9 @@ inThisBuild(
     developers := List(
       tlGitHubDev("christopherdavenport", "Christopher Davenport")
     ),
-    githubWorkflowJavaVersions := Seq(
-      JavaSpec.temurin("17"),
-      JavaSpec.temurin("21"),
-      JavaSpec.temurin("25"),
-    ),
-    githubWorkflowGeneratedCI ~= (_.map { job =>
-      if (job.id == "publish") job.withJavas(List(JavaSpec.temurin("17"))) else job
-    }),
+    githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17")),
     githubWorkflowBuildPostamble += WorkflowStep.Sbt(
-      List("+codeGeneratorPlugin/scripted"),
+      List("codeGeneratorPlugin/scripted"),
       name = Some("Scripted tests"),
       cond = Some("matrix.project == 'http4s-grpcJVM' && matrix.java == 'temurin@17'"),
     ),
@@ -113,11 +106,8 @@ lazy val codeGeneratorPlugin = project
     name := "sbt-http4s-grpc",
     scalaVersion := scala212Version,
     crossScalaVersions := Seq(scala212Version, scala3PluginVersion),
-    scalacOptions ++= {
-      if (scalaBinaryVersion.value == "2.12") Seq("-Xsource:3") else Nil
-    },
     pluginCrossBuild / sbtVersion := (scalaBinaryVersion.value match {
-      case "2.12" => "1.13.1"
+      case "2.12" => sbtVersion.value
       case _ => sbt2Version
     }),
     tlJdkRelease := (scalaBinaryVersion.value match {
