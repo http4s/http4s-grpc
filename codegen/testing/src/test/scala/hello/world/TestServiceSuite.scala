@@ -311,19 +311,20 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
   }
 
-  test("Server rejects oversized messages without buffering them") {
-    val client = rechunkedClient(TestService.toRoutes(impl).orNotFound)
-    val body =
-      Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0).take(8L * 1024 * 1024)
+  test("Server rejects oversized messages without reading the rest of the request") {
+    val body = Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0)
 
-    client
+    TestService
+      .toRoutes(impl)
+      .orNotFound
       .run(
         Request[IO](Method.POST, uri"/hello.world.TestService/noStreaming")
           .withHeaders("Content-Type" -> "application/grpc")
-          .withBodyStream(body)
+          .withBodyStream(body.rechunkRandomly())
       )
-      .use(resp => resp.body.compile.drain >> resp.trailerHeaders)
+      .flatMap(resp => resp.body.compile.drain >> resp.trailerHeaders)
       .map(_.get[org.http4s.grpc.codecs.NamedHeaders.GrpcStatus].map(_.statusCode))
+      .timeout(10.seconds)
       .assertEquals(Some(GrpcStatusCode.ResourceExhausted))
   }
 
@@ -339,6 +340,26 @@ class TestServiceSuite extends CatsEffectSuite with ScalaCheckEffectSuite {
       .attemptNarrow[GrpcStatusException]
       .map(_.leftMap(_.status.code))
       .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+  }
+
+  test("Client rejects oversized messages without reading the rest of the response") {
+    val body = Stream[IO, Byte](0, -1, -1, -1, -1) ++ Stream.constant[IO, Byte](0)
+    val response =
+      Response[IO]().withHeaders("Content-Type" -> "application/grpc").withBodyStream(body)
+    val client = TestService.fromClient[IO](Client[IO](_ => Resource.pure(response)), Uri())
+    val message = TestMessage("a", 0, None)
+
+    List(
+      client.noStreaming(message, Headers.empty).void,
+      client.clientStreaming(Stream.emit(message), Headers.empty).void,
+      client.serverStreaming(message, Headers.empty).compile.drain,
+      client.bothStreaming(Stream.emit(message), Headers.empty).compile.drain,
+    ).traverseVoid(
+      _.attemptNarrow[GrpcStatusException]
+        .map(_.leftMap(_.status.code))
+        .timeout(10.seconds)
+        .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted))
+    )
   }
 
   /*

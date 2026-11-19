@@ -58,7 +58,7 @@ class EmberSuite extends CatsEffectSuite {
     def `export`(request: TestMessage, ctx: Headers): IO[TestMessage] = IO(request)
   }
 
-  val ember: Resource[IO, (Client[IO], Uri)] =
+  def ember(maxMessageSize: Int): Resource[IO, (Client[IO], Uri)] =
     for {
       server <- EmberServerBuilder
         .default[IO]
@@ -66,26 +66,33 @@ class EmberSuite extends CatsEffectSuite {
         .withHost(ipv4"127.0.0.1")
         .withPort(port"0")
         .withShutdownTimeout(1.second)
-        .withHttpApp(TestService.toRoutes(impl).orNotFound)
+        .withHttpApp(TestService.toRoutes(impl, maxMessageSize).orNotFound)
         .build
       client <- EmberClientBuilder.default[IO].withHttp2.build
     } yield (client, server.baseUri)
 
-  test("Connection keeps working after the server rejects an oversized message") {
-    ember.use { case (client, uri) =>
-      val service = TestService.fromClient[IO](client, uri, Int.MaxValue)
-
+  def rejectThenAccept(service: TestService[IO]): IO[Unit] =
+    service
+      .noStreaming(TestMessage("a" * (8 * MiB), 0, None), Headers.empty)
+      .attemptNarrow[GrpcStatusException]
+      .map(_.leftMap(_.status.code))
+      .timeout(10.seconds)
+      .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted)) >>
       service
-        .noStreaming(TestMessage("a" * (8 * MiB), 0, None), Headers.empty)
-        .attemptNarrow[GrpcStatusException]
-        .map(_.leftMap(_.status.code))
+        .noStreaming(TestMessage("a" * MiB, 0, None), Headers.empty)
+        .map(_.a.length)
         .timeout(10.seconds)
-        .assertEquals(Either.left(GrpcStatusCode.ResourceExhausted)) >>
-        service
-          .noStreaming(TestMessage("a" * MiB, 0, None), Headers.empty)
-          .map(_.a.length)
-          .timeout(10.seconds)
-          .assertEquals(MiB)
+        .assertEquals(MiB)
+
+  test("Connection keeps working after the server rejects an oversized message") {
+    ember(Messages.DefaultMaxMessageSize).use { case (client, uri) =>
+      rejectThenAccept(TestService.fromClient[IO](client, uri, Int.MaxValue))
+    }
+  }
+
+  test("Connection keeps working after the client rejects an oversized message") {
+    ember(Int.MaxValue).use { case (client, uri) =>
+      rejectThenAccept(TestService.fromClient[IO](client, uri, Messages.DefaultMaxMessageSize))
     }
   }
 
