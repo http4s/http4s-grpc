@@ -39,7 +39,7 @@ object Http4sGrpcPlugin extends AutoPlugin {
   }
   import autoImport._
 
-  override def projectSettings: Seq[Def.Setting[_]] =
+  override def projectSettings: Seq[Def.Setting[?]] =
     List(
       Compile / http4sGrpcOutputPath := (Compile / sourceManaged).value / "http4s-grpc",
       Compile / http4sGrpcScalaPBOptions := Seq.empty,
