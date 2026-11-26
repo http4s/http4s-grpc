@@ -1,4 +1,4 @@
-# http4s-grpc
+# http4s-grpc <img src="docs/img/logo.svg" align="right" height="130" alt="" />
 
 ![Maven Central](https://img.shields.io/maven-central/v/org.http4s/http4s-grpc_2.13?style=flat)
 
